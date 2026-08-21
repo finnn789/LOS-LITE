@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: los-lite
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/los_lite
+    username: ${DB_USERNAME:los_lite}
+    password: ${DB_PASSWORD:los_lite}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
+server:
+  # 8080 SUDAH dipakai Camunda 8 Run (C8Run) lokal untuk REST API/Operate/Tasklist -
+  # digeser ke 8081 supaya tidak bentrok saat app ini & C8Run jalan bersamaan.
+  port: 8081
+
+ocr:
+  service:
+    base-url: ${OCR_SERVICE_BASE_URL:http://localhost:8000}
+
+camunda:
+  client:
+    # self-managed = connect ke broker Zeebe milik sendiri (C8Run lokal),
+    # BUKAN Camunda 8 SaaS (cloud).
+    mode: self-managed
+    # C8Run lokal default TANPA auth - kalau nanti pindah ke Docker Compose/SaaS
+    # yang ada Keycloak, ini wajib diganti ke method: basic/oidc + isi credential-nya.
+    auth:
+      method: none
+    # Alamat gRPC Gateway Zeebe - port 26500, dikonfirmasi listening dari cek proses C8Run.
+    grpc-address: http://localhost:26500
+    # Alamat REST API Camunda 8 (dipakai starter untuk operasi non-gRPC) - port 8080,
+    # ini port C8Run, BUKAN port app ini (lihat server.port di atas).
+    rest-address: http://localhost:8080
+
+jwt:
+  # WAJIB di-override lewat .env (JWT_SECRET) untuk environment nyata.
+  # Default di bawah cuma supaya app bisa langsung jalan pas local dev.
+  # Minimal 256 bit (32 karakter) karena dipakai sign HS256.
+  secret: ${JWT_SECRET:dev-only-secret-key-jangan-dipakai-di-production-ganti-ini}
+  expiration-ms: ${JWT_EXPIRATION_MS:3600000} # 1 jam
