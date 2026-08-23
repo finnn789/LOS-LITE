@@ -9,12 +9,14 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      # Solo/portfolio project, bukan tim & bukan data production - Hibernate yang
+      # auto-generate & auto-alter skema langsung dari @Entity tiap start. Flyway
+      # sengaja DILEPAS (lihat pom.xml) supaya cuma ada 1 sumber kebenaran skema:
+      # kode entity itu sendiri, bukan campuran entity + file migration manual.
+      # Resiko yang WAJIB diingat: rename kolom TIDAK terdeteksi (kolom lama nganggur,
+      # bukan di-rename), jadi kalau rename field, drop kolom lama manual via DB client.
+      ddl-auto: update
     open-in-view: false
-
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
 
   servlet:
     multipart:

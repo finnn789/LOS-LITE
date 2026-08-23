@@ -2,6 +2,7 @@ package org.project.loslite.domain.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import org.project.loslite.domain.enums.DocumentType;
 import org.project.loslite.domain.enums.OcrStatus;
 
@@ -11,19 +12,18 @@ import java.time.Instant;
  * Dokumen yang di-upload untuk satu LoanApplication (KTP, slip gaji, dst).
  * ocr_raw_result menyimpan hasil mentah dari Python OCR service (JSON string) —
  * berguna untuk debug kalau OCR salah baca, tanpa harus panggil ulang service Python.
+ *
+ * id + created_at/updated_at diwarisi dari BaseEntity (created_at/updated_at di sini
+ * jadi kolom tambahan yang nggak dipakai - uploaded_at tetap sumber kebenaran waktu
+ * upload, lihat catatan di BaseEntity.java).
  */
 @Entity
 @Table(name = "document")
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class Document {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@SuperBuilder
+public class Document extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "loan_application_id", nullable = false)
@@ -46,8 +46,10 @@ public class Document {
     @Column(name = "uploaded_at", nullable = false, updatable = false)
     private Instant uploadedAt;
 
+    // Nama method sengaja BEDA dari onCreate() milik BaseEntity - lihat catatan
+    // di BaseEntity.java soal kenapa nama-nya nggak boleh sama.
     @PrePersist
-    void onCreate() {
+    void applyUploadDefaults() {
         this.uploadedAt = Instant.now();
         if (this.ocrStatus == null) {
             this.ocrStatus = OcrStatus.PENDING;

@@ -2,6 +2,7 @@ package org.project.loslite.domain.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import org.project.loslite.domain.enums.ScoreBucket;
 import org.project.loslite.domain.enums.ScoringDecision;
 
@@ -14,19 +15,18 @@ import java.time.Instant;
  * ulang (misal setelah dokumen di-upload ulang), histori lama TIDAK dihapus/overwrite.
  * Untuk ambil hasil terbaru: query ORDER BY calculated_at DESC LIMIT 1
  * (lihat ScoringResultRepository#findFirstByLoanApplicationIdOrderByCalculatedAtDesc).
+ *
+ * id + created_at/updated_at diwarisi dari BaseEntity (created_at/updated_at di sini
+ * jadi kolom tambahan yang nggak dipakai - calculated_at tetap sumber kebenaran
+ * waktu kalkulasi, lihat catatan di BaseEntity.java).
  */
 @Entity
 @Table(name = "scoring_result")
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class ScoringResult {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@SuperBuilder
+public class ScoringResult extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "loan_application_id", nullable = false)
@@ -52,8 +52,10 @@ public class ScoringResult {
     @Column(name = "calculated_at", nullable = false, updatable = false)
     private Instant calculatedAt;
 
+    // Nama method sengaja BEDA dari onCreate() milik BaseEntity - lihat catatan
+    // di BaseEntity.java soal kenapa nama-nya nggak boleh sama.
     @PrePersist
-    void onCreate() {
+    void applyCalculatedAt() {
         this.calculatedAt = Instant.now();
     }
 }

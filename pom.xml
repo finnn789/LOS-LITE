@@ -95,16 +95,6 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Flyway migration -->
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-mysql</artifactId>
-        </dependency>
-
         <!-- Camunda 8 (Zeebe) client - untuk trigger & subscribe proses BPMN yang jalan
              di broker Zeebe TERPISAH (Camunda 8 Run lokal, lihat README/catatan setup).
              Versi 8.8.6 dipilih SENGAJA (bukan versi terbaru io.camunda:camunda-spring-boot-3-starter

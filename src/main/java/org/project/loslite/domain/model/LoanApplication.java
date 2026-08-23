@@ -2,6 +2,7 @@ package org.project.loslite.domain.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import org.project.loslite.domain.enums.LoanStatus;
 
 import java.math.BigDecimal;
@@ -11,19 +12,17 @@ import java.time.Instant;
  * Satu pengajuan pinjaman. monthly_income & monthly_debt_obligation sengaja disimpan
  * DI SINI (bukan di Applicant) karena datanya spesifik per pengajuan — bisa berubah
  * setiap kali applicant yang sama re-apply di lain waktu.
+ *
+ * id + created_at/updated_at diwarisi dari BaseEntity — biar nggak duplikat di tiap
+ * entity.
  */
 @Entity
 @Table(name = "loan_application")
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class LoanApplication {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@SuperBuilder
+public class LoanApplication extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "applicant_id", nullable = false)
@@ -54,24 +53,14 @@ public class LoanApplication {
     @Column(name = "decided_at")
     private Instant decidedAt;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
-
+    // Nama method sengaja BEDA dari onCreate() milik BaseEntity - keduanya tetap
+    // sama-sama dipanggil JPA saat persist (satu dari superclass, satu dari sini).
+    // Kalau namanya sama persis, itu jadi OVERRIDE (timestamp-nya nggak jalan lagi),
+    // bukan 2 callback terpisah.
     @PrePersist
-    void onCreate() {
-        Instant now = Instant.now();
-        this.createdAt = now;
-        this.updatedAt = now;
+    void applyDefaultStatus() {
         if (this.status == null) {
             this.status = LoanStatus.DRAFT;
         }
-    }
-
-    @PreUpdate
-    void onUpdate() {
-        this.updatedAt = Instant.now();
     }
 }
