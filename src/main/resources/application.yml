@@ -3,7 +3,7 @@ spring:
     name: los-lite
 
   datasource:
-    url: jdbc:mysql://localhost:3306/los_lite
+    url: jdbc:postgresql://localhost:5432/los_lite
     username: ${DB_USERNAME:los_lite}
     password: ${DB_PASSWORD:los_lite}
 
@@ -34,6 +34,14 @@ ocr:
 
 camunda:
   client:
+    # Saklar ON/OFF Camunda. false = SELURUH autoconfigure Camunda (client, health
+    # indicator, job worker scanner buat @JobWorker di LoanApplicationWorkflowService,
+    # dst) tidak dipasang sama sekali - app tetap start normal walau C8Run tidak
+    # jalan. Ini property resmi bawaan camunda-spring-boot-starter (bukan hack),
+    # lihat io.camunda.client.spring.configuration.condition.ConditionalOnCamundaClientEnabled
+    # yang membungkus io.camunda.client.spring.configuration.CamundaAutoConfiguration.
+    # Override lewat env var CAMUNDA_ENABLED=false kalau C8Run lokal lagi tidak jalan.
+    enabled: ${CAMUNDA_ENABLED:false}
     # self-managed = connect ke broker Zeebe milik sendiri (C8Run lokal),
     # BUKAN Camunda 8 SaaS (cloud).
     mode: self-managed
