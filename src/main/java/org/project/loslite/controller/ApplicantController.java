@@ -11,6 +11,8 @@ import org.project.loslite.dto.CreateApplicantRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.project.loslite.dto.ApplicantSummaryResponse;
+import java.util.List;
 
 /**
  * Endpoint untuk OFFICER menginput data pengaju (Applicant) - master data nasabah,
@@ -67,5 +69,22 @@ public class ApplicantController {
         );
 
         return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil data applicant", response));
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<ApplicantSummaryResponse>>> getAll() {
+        List<ApplicantSummaryResponse> responses = applicantService.getAll()
+                .stream()
+                .map(a -> new ApplicantSummaryResponse(
+                        a.getId(),
+                        a.getFullName(),
+                        a.getDateOfBirth(),
+                        a.getPhoneNumber(),
+                        a.getEmail(),
+                        a.getAddress()
+                ))
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil semua applicant", responses));
     }
 }

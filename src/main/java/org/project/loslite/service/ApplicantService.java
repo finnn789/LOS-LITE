@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -52,6 +53,11 @@ public class ApplicantService {
         return applicantRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Applicant dengan id " + id + " tidak ditemukan"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Applicant> getAll() {
+        return applicantRepository.findAll();
     }
 
     // SHA-256 satu arah, BUKAN untuk sembunyikan NIK (itu tugas enkripsi nanti),
