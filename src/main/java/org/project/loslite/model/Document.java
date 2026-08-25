@@ -5,7 +5,8 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.project.loslite.enums.DocumentType;
 import org.project.loslite.enums.OcrStatus;
-
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 
 /**
@@ -40,6 +41,7 @@ public class Document extends BaseEntity {
     @Column(name = "ocr_status", nullable = false, length = 20)
     private OcrStatus ocrStatus;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "ocr_raw_result", columnDefinition = "JSON")
     private String ocrRawResult;
 

@@ -5,6 +5,8 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.project.loslite.enums.ScoreBucket;
 import org.project.loslite.enums.ScoringDecision;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -14,7 +16,7 @@ import java.time.Instant;
  * Sengaja versioned (1 LoanApplication : N ScoringResult) — kalau scoring dihitung
  * ulang (misal setelah dokumen di-upload ulang), histori lama TIDAK dihapus/overwrite.
  * Untuk ambil hasil terbaru: query ORDER BY calculated_at DESC LIMIT 1
- * (lihat ScoringResultRepository#findFirstByLoanApplicationIdOrderByCalculatedAtDesc).
+ * (query: ORDER BY calculated_at DESC LIMIT 1, disusun lewat Blaze di service).
  *
  * id + created_at/updated_at diwarisi dari BaseEntity (created_at/updated_at di sini
  * jadi kolom tambahan yang nggak dipakai - calculated_at tetap sumber kebenaran
@@ -46,6 +48,7 @@ public class ScoringResult extends BaseEntity {
 
     // Jejak rule mana saja yang "menyala" saat scoring — untuk explainability,
     // supaya keputusan approve/reject bisa dijelaskan, bukan black-box.
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "rule_trace", columnDefinition = "JSON")
     private String ruleTrace;
 

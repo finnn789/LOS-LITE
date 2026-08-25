@@ -2,13 +2,13 @@ package org.project.loslite.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.project.loslite.enums.LoanStatus;
 import org.project.loslite.model.AppUser;
 import org.project.loslite.model.AuditLog;
 import org.project.loslite.model.LoanApplication;
-import org.project.loslite.repository.AuditLogRepository;
-import org.project.loslite.repository.LoanApplicationRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,31 +23,40 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class LoanApplicationStatusService {
 
-    private final LoanApplicationRepository loanApplicationRepository;
-    private final AuditLogRepository auditLogRepository;
+    @PersistenceContext
+    private EntityManager em;
+
     private final LoanStatusTransitionValidator transitionValidator;
     private final ObjectMapper objectMapper;
 
     /**
+     * @param loanApplication WAJIB entity yang managed (diambil di dalam transaksi
+     *                        pemanggil), BUKAN Entity View. Kalau detached, perubahan
+     *                        status tidak akan tersimpan ke database.
      * @param performedBy nullable - null berarti perubahan status dipicu otomatis oleh
      *                     sistem (misal RuleEngine auto-reject), bukan aksi manual staff.
      */
     @Transactional
     public LoanApplication changeStatus(LoanApplication loanApplication, LoanStatus newStatus, AppUser performedBy) {
-        LoanStatus oldStatus = loanApplication.getStatus();
+
+        var oldStatus = loanApplication.getStatus();
 
         transitionValidator.validateTransition(oldStatus, newStatus);
 
         loanApplication.setStatus(newStatus);
-        LoanApplication saved = loanApplicationRepository.save(loanApplication);
 
-        writeAuditLog(saved, oldStatus, newStatus, performedBy);
+        // TIDAK ada save() di sini - dan itu disengaja. loanApplication sudah
+        // "managed" oleh Hibernate, jadi UPDATE diterbitkan otomatis saat
+        // transaksi ditutup. Lihat catatan dirty checking.
 
-        return saved;
+        writeAuditLog(loanApplication, oldStatus, newStatus, performedBy);
+
+        return loanApplication;
     }
 
     private void writeAuditLog(LoanApplication loanApplication, LoanStatus oldStatus, LoanStatus newStatus, AppUser performedBy) {
-        AuditLog auditLog = AuditLog.builder()
+
+        var auditLog = AuditLog.builder()
                 .entityType("LoanApplication")
                 .entityId(loanApplication.getId())
                 .action("STATUS_CHANGE")
@@ -56,7 +65,7 @@ public class LoanApplicationStatusService {
                 .performedBy(performedBy)
                 .build();
 
-        auditLogRepository.save(auditLog);
+        em.persist(auditLog);
     }
 
     private String toJson(LoanStatus status) {

@@ -2,25 +2,41 @@ package org.project.loslite.config;
 
 import com.blazebit.persistence.Criteria;
 import com.blazebit.persistence.CriteriaBuilderFactory;
+import com.blazebit.persistence.integration.view.spring.EnableEntityViews;
 import com.blazebit.persistence.spi.CriteriaBuilderConfiguration;
+import com.blazebit.persistence.view.EntityViewManager;
+import com.blazebit.persistence.view.spi.EntityViewConfiguration;
 import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.PersistenceUnit;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 
-/**
- * Bean setup buat Blaze-Persistence (CriteriaBuilderFactory) - satu-satunya query tool
- * yang dipakai project ini (QueryDSL murni/JPAQueryFactory sengaja tidak dipakai lagi,
- * lihat ApplicantRepository buat pola query-nya). EntityManagerFactory yang dipakai di
- * sini SAMA dengan yang dipegang JpaRepository biasa - jadi query lewat Blaze dan lewat
- * *Repository yang sudah ada tetap ikut transaksi Spring yang sama (@Transactional di
- * Service, bukan di sini).
- */
+
 @Configuration
+@EnableEntityViews("org.project.loslite.dto")
 public class QueryConfig {
 
+    @PersistenceUnit
+    private EntityManagerFactory entityManagerFactory;
+
     @Bean
-    public CriteriaBuilderFactory criteriaBuilderFactory(EntityManagerFactory entityManagerFactory) {
+    @Lazy(false)
+    public CriteriaBuilderFactory createCriteriaBuilderFactory() {
         CriteriaBuilderConfiguration config = Criteria.getDefault();
         return config.createCriteriaBuilderFactory(entityManagerFactory);
+    }
+
+    @Bean
+    @Lazy(false)
+    public EntityViewManager createEntityViewManager( CriteriaBuilderFactory cbf, ObjectProvider<EntityViewConfiguration> evcProvider) {
+
+        EntityViewConfiguration evc = evcProvider.getIfAvailable();
+        if (evc == null) {
+            throw new IllegalStateException("NotFound");
+        }
+
+        return evc.createEntityViewManager(cbf);
     }
 }

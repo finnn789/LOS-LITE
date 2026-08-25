@@ -8,14 +8,16 @@ import org.project.loslite.enums.DocumentType;
 import org.project.loslite.enums.OcrStatus;
 import org.project.loslite.model.Document;
 import org.project.loslite.model.LoanApplication;
-import org.project.loslite.repository.DocumentRepository;
 import org.project.loslite.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
+import com.blazebit.persistence.CriteriaBuilderFactory;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.project.loslite.model.QDocument;
 import java.util.List;
 
 @Service
@@ -27,7 +29,10 @@ public class DocumentService {
     private static final long MAX_FILE_SIZE_BYTES = 5L * 1024 * 1024; // 5MB
     private static final List<String> ALLOWED_CONTENT_TYPES = List.of("image/jpeg", "image/png");
 
-    private final DocumentRepository documentRepository;
+    @PersistenceContext
+    private EntityManager em;
+
+    private final CriteriaBuilderFactory configBuilder;
     private final LoanApplicationService loanApplicationService;
     private final FileStorage fileStorage;
     private final OcrClient ocrClient;
@@ -52,7 +57,9 @@ public class DocumentService {
 
         runOcr(document, file, documentType);
 
-        return documentRepository.save(document);
+        em.persist(document);
+
+        return document;
     }
 
     // OCR dijalankan SINKRON di sini (bagian dari request upload yang sama), tapi
@@ -82,16 +89,36 @@ public class DocumentService {
 
     @Transactional(readOnly = true)
     public Document getById(Long id) {
-        return documentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Document dengan id " + id + " tidak ditemukan"));
+
+        var qp = new QDocument("d");
+
+        var res = configBuilder.create(em, Document.class)
+                .from(Document.class, qp.getMetadata().getName())
+                .where(qp.id.toString()).eq(id)
+                .setMaxResults(1)
+                .getResultList();
+
+        if (res.isEmpty()) {
+            throw new ResourceNotFoundException("Document dengan id " + id + " tidak ditemukan");
+        }
+
+        return res.get(0);
     }
 
     @Transactional(readOnly = true)
     public List<Document> getByLoanApplicationId(Long loanApplicationId) {
-        return documentRepository.findByLoanApplicationId(loanApplicationId);
+
+        var qp = new QDocument("d");
+
+        return configBuilder.create(em, Document.class)
+                .from(Document.class, qp.getMetadata().getName())
+                .where(qp.loanApplication.id.toString()).eq(loanApplicationId)
+                .orderByAsc(qp.id.toString())
+                .getResultList();
     }
 
     private void validateFile(MultipartFile file) {
+        log.info("Content-Type yang diterima: {}", file.getContentType());
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File tidak boleh kosong");
         }

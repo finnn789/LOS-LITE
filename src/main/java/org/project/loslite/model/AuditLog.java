@@ -3,6 +3,8 @@ package org.project.loslite.model;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
@@ -33,9 +35,11 @@ public class AuditLog extends BaseEntity {
     @Column(name = "action", nullable = false, length = 50)
     private String action;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "old_value", columnDefinition = "JSON")
     private String oldValue;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "new_value", columnDefinition = "JSON")
     private String newValue;
 

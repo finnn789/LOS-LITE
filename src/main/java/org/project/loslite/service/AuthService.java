@@ -1,77 +1,93 @@
 package org.project.loslite.service;
 
+import com.blazebit.persistence.CriteriaBuilderFactory;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.project.loslite.dto.AuthResult;
 import org.project.loslite.enums.UserRole;
-import org.project.loslite.model.AppUser;
-import org.project.loslite.repository.AppUserRepository;
 import org.project.loslite.exception.DuplicateResourceException;
+import org.project.loslite.model.AppUser;
+import org.project.loslite.model.QAppUser;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Use case: login staff internal (OFFICER/ADMIN).
+ * Use case: login & registrasi staff internal.
  * <p>
- * Ini "Service" di application layer — isinya ORKESTRASI, bukan aturan bisnis kompleks
- * dan bukan detail teknis. Tugasnya cuma 3: ambil data (lewat domain repository),
- * ambil keputusan sederhana (password cocok atau tidak), delegasikan hal teknis
- * (bikin token) ke port TokenProvider.
- * <p>
- * @Service menandai kelas ini sebagai Spring bean biasa (bukan @Entity/@Repository/@Controller) —
- * Spring akan otomatis suntikkan (inject) AuthService ini ke controller yang membutuhkannya.
+ * Query disusun langsung lewat Blaze-Persistence + EntityManager, tanpa repository.
+ * Path kolom memakai metamodel QueryDSL (QAppUser) supaya salah ketik nama field
+ * ketahuan saat compile, bukan saat endpoint dipanggil.
  */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final AppUserRepository appUserRepository;
+    @PersistenceContext
+    private EntityManager em;
+
+    private final CriteriaBuilderFactory configBuilder;
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
 
+    @Transactional(readOnly = true)
     public AuthResult login(String username, String rawPassword) {
 
-        AppUser user = appUserRepository.findByUsername(username)
-                .orElseThrow(() -> new BadCredentialsException("Username atau password salah"));
+        var qp = new QAppUser("u");
 
-        // passwordEncoder.matches(raw, hash) -> cocokkan password mentah dari user
-        // dengan hash yang tersimpan di DB. TIDAK PERNAH bandingkan String secara langsung (==/equals),
-        // karena passwordHash di DB sudah di-hash satu arah (BCrypt), tidak bisa "dibalikin".
+        var res = configBuilder.create(em, AppUser.class)
+                .from(AppUser.class, qp.getMetadata().getName())
+                .where(qp.username.toString()).eq(username)
+                .setMaxResults(1)
+                .getResultList();
+
+        // Pesan sengaja SAMA untuk "username tidak ada" dan "password salah" -
+        // supaya penyerang tidak bisa menebak username mana yang terdaftar.
+        if (res.isEmpty()) {
+            throw new BadCredentialsException("Username atau password salah");
+        }
+
+        var user = res.get(0);
+
+        // passwordEncoder.matches(raw, hash) -> cocokkan password mentah dengan hash
+        // di DB. TIDAK PERNAH pakai equals(), karena BCrypt satu arah.
         if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
             throw new BadCredentialsException("Username atau password salah");
         }
 
-        String token = tokenProvider.generateToken(user);
+        var token = tokenProvider.generateToken(user);
 
         return new AuthResult(token, user.getUsername(), user.getFullName(), user.getRole());
     }
 
-    /**
-     * Use case: daftarkan akun staff baru (OFFICER/ADMIN).
-     * <p>
-     * @Transactional di sini menandai "batas transaksi" use case ini — kalau ada
-     * error SETELAH save() (belum ada sekarang, tapi misalnya nanti kirim notifikasi
-     * yang gagal), seluruh operasi termasuk save() ikut di-rollback. Untuk method
-     * login() di atas tidak perlu @Transactional karena dia cuma baca data (read-only),
-     * tidak ada perubahan state yang perlu "batal semua kalau salah satu gagal".
-     */
     @Transactional
-    public AppUser register(String username, String rawPassword, String fullName,UserRole role) {
+    public AppUser register(String username, String rawPassword, String fullName, UserRole role) {
 
-        if (appUserRepository.existsByUsername(username)) {
+        var qp = new QAppUser("u");
+
+        // Ambil kolom id saja + LIMIT 1 - yang dibutuhkan cuma "ada atau tidak".
+        var duplicate = configBuilder.create(em, Long.class)
+                .from(AppUser.class, qp.getMetadata().getName())
+                .select(qp.id.toString())
+                .where(qp.username.toString()).eq(username)
+                .setMaxResults(1)
+                .getResultList();
+
+        if (!duplicate.isEmpty()) {
             throw new DuplicateResourceException("Username '" + username + "' sudah dipakai");
         }
 
-        AppUser newUser = AppUser.builder()
+        var newUser = AppUser.builder()
                 .username(username)
-                .passwordHash(passwordEncoder.encode(rawPassword)) // encode = hash 1 arah, BUKAN dekripsi-able
+                .passwordHash(passwordEncoder.encode(rawPassword)) // encode = hash 1 arah
                 .fullName(fullName)
                 .role(role)
                 .build();
 
-        return appUserRepository.save(newUser);
+        em.persist(newUser);
+
+        return newUser;
     }
-
-
 }
