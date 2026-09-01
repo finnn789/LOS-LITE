@@ -53,6 +53,24 @@ public class LoanApplication extends BaseEntity {
     @Column(name = "decided_at")
     private Instant decidedAt;
 
+    // Diisi saat submit() berhasil trigger business process di WORKFLOW-APP (lihat
+    // LoanApplicationWorkflowService.submit()) - ketiganya nullable, TETAP null kalau
+    // WORKFLOW-APP OFF (workflow-app.enabled=false) atau service-nya gagal dihubungi
+    // (submit() tidak boleh gagal total cuma karena ini). businessKey yang dipakai untuk
+    // lookup ke WORKFLOW-APP TIDAK disimpan di sini - deterministik, diturunkan dari id
+    // lewat LoanApplicationWorkflowService#businessKeyOf(Long), bukan disimpan redundan.
+    @Column(name = "workflow_trigger_id", length = 100)
+    private String workflowTriggerId;
+
+    @Column(name = "workflow_process_instance_id", length = 100)
+    private String workflowProcessInstanceId;
+
+    // Status TERAKHIR yang diketahui dari WORKFLOW-APP (STARTED/RUNNING/FAILED/COMPLETED/
+    // CANCELLED/dst) - sengaja String bukan enum, WORKFLOW-APP eksplisit bilang treat
+    // status-nya sebagai opaque value, bisa nambah varian baru kapan saja.
+    @Column(name = "workflow_status", length = 30)
+    private String workflowStatus;
+
     // Nama method sengaja BEDA dari onCreate() milik BaseEntity - keduanya tetap
     // sama-sama dipanggil JPA saat persist (satu dari superclass, satu dari sini).
     // Kalau namanya sama persis, itu jadi OVERRIDE (timestamp-nya nggak jalan lagi),

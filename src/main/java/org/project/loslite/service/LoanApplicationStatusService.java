@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * SATU-SATUNYA pintu masuk untuk mengubah status LoanApplication di seluruh aplikasi.
- * Service lain (ScoringService, DocumentService, dst) TIDAK BOLEH panggil
+ * Service lain (ScoringService, LoanApplicationWorkflowService, dst) TIDAK BOLEH panggil
  * loanApplication.setStatus(...) langsung - wajib lewat sini, supaya:
  * 1. Transisi selalu divalidasi (lewat LoanStatusTransitionValidator)
  * 2. Setiap perubahan status SELALU tercatat di AuditLog, tanpa kecuali

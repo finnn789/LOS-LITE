@@ -11,12 +11,14 @@ import org.project.loslite.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-
 /**
- * Use-case orchestrator untuk siklus hidup LoanApplication SEBELUM masuk scoring
- * (create draft -> submit -> document verification). Tahap SCORING dan seterusnya
- * ditangani ScoringService, karena butuh domain service (RuleEngine) yang berbeda urusan.
+ * Use-case orchestrator untuk bagian siklus hidup LoanApplication yang TIDAK terikat ke
+ * orkestrasi Camunda: create draft & pindah ke DOCUMENT_VERIFICATION. Class ini sengaja
+ * TIDAK PERNAH import apa pun dari Camunda/Zeebe - submit()/review()/disburse() (yang
+ * memicu proses BPMN) ada di {@link org.project.loslite.workflow.LoanApplicationWorkflowService},
+ * yang sebaliknya depend ke class ini (satu arah saja, supaya tidak circular). Tahap
+ * SCORING ditangani ScoringService, karena butuh domain service (RuleEngine) yang berbeda
+ * urusan.
  */
 @Service
 @RequiredArgsConstructor
@@ -51,16 +53,6 @@ public class LoanApplicationService {
         return loanApplicationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "LoanApplication dengan id " + id + " tidak ditemukan"));
-    }
-
-    @Transactional
-    public LoanApplication submit(Long id) {
-        LoanApplication loanApplication = getById(id);
-
-        loanApplicationStatusService.changeStatus(loanApplication, LoanStatus.SUBMITTED, null);
-        loanApplication.setSubmittedAt(Instant.now());
-
-        return loanApplicationRepository.save(loanApplication);
     }
 
     @Transactional

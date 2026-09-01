@@ -1,0 +1,79 @@
+{
+  "task": {
+    "taskId": "2251799813686890",
+    "taskDefinitionId": "DisburseFunds",
+    "name": "Disburse Funds",
+    "processDefinitionId": "loan-application-process",
+    "processInstanceKey": "2251799813685251",
+    "assignee": null,
+    "candidateGroups": ["finance-officer"],
+    "taskState": "CREATED",
+    "creationTime": "2026-08-27T05:40:11.884Z",
+    "completionTime": null,
+    "dueDate": null,
+    "formKey": "camunda-forms:bpmn:userTaskForm_DisburseFunds"
+  },
+  "context": {
+    "_comment": "Sama seperti officer-review-task.json: ini gabungan data DB, bukan Zeebe variables mentah.",
+    "loanApplicationId": 4821,
+    "status": "APPROVED",
+    "applicant": {
+      "fullName": "Siti Rahmawati",
+      "nikMasked": "35********1234"
+    },
+    "loan": {
+      "loanAmountApproved": 50000000.00,
+      "loanTenorMonths": 24,
+      "decidedAt": "2026-08-27T04:02:47.113Z"
+    }
+  },
+  "variables": {
+    "_comment": "reviewDecision cuma ada kalau token lewat jalur MANUAL_REVIEW -> Officer Review dulu (lihat gateway kedua di plan). Kalau APPROVE langsung dari scoring, reviewDecision tidak pernah di-set.",
+    "loanApplicationId": 4821,
+    "decision": "APPROVE",
+    "reviewDecision": "APPROVE"
+  },
+  "formSchema": {
+    "type": "default",
+    "id": "userTaskForm_DisburseFunds",
+    "schemaVersion": 17,
+    "exporter": {
+      "name": "form-js (loslite form-generator dummy)",
+      "version": "1.0.0"
+    },
+    "components": [
+      { "type": "text", "id": "heading", "text": "## Pencairan Dana — Pengajuan #{{loanApplicationId}}" },
+      { "type": "text", "id": "applicantName", "text": "**Nama Nasabah**: {{applicant.fullName}}" },
+      { "type": "text", "id": "approvedAmount", "text": "**Jumlah Disetujui**: Rp {{loan.loanAmountApproved}}" },
+      { "type": "text", "id": "tenor", "text": "**Tenor**: {{loan.loanTenorMonths}} bulan" },
+      { "type": "text", "id": "decidedAt", "text": "**Disetujui pada**: {{loan.decidedAt}}" },
+      {
+        "type": "textfield",
+        "id": "disbursementAccountField",
+        "key": "disbursementAccountNumber",
+        "label": "Nomor Rekening Pencairan",
+        "validate": { "required": true, "pattern": "^[0-9]{8,20}$" }
+      },
+      {
+        "type": "datetime",
+        "id": "disbursementDateField",
+        "key": "disbursementDate",
+        "label": "Tanggal Pencairan",
+        "subtype": "date",
+        "validate": { "required": true }
+      },
+      { "type": "textarea", "id": "notesField", "key": "disbursementNotes", "label": "Catatan (opsional)" },
+      { "type": "button", "id": "submitBtn", "label": "Konfirmasi Pencairan", "action": "submit" }
+    ]
+  },
+  "submitContract": {
+    "endpoint": "POST /loan-applications/{loanApplicationId}/disburse",
+    "requestBodyDto": "BELUM ADA — Fase 5 di camunda-workflow-plan.md belum mendefinisikan body request, cuma changeStatus + complete user task",
+    "requestBodyExample": {
+      "disbursementAccountNumber": "1234567890",
+      "disbursementDate": "2026-08-27",
+      "disbursementNotes": "Dicairkan lewat transfer bank"
+    },
+    "note": "INI PROPOSAL, bukan kontrak final. disbursementAccountNumber/disbursementDate/disbursementNotes belum ada DTO atau kolom entity-nya. Kalau mau dipakai beneran: tambah DisburseFundsRequest DTO + kolom terkait di Fase 5. Kalau cuma butuh konfirmasi tanpa input tambahan, hapus 3 field textfield/datetime/textarea di atas dan sisakan tombol submit saja (body kosong)."
+  }
+}

@@ -1,9 +1,10 @@
-package org.project.loslite.service;
+package org.project.loslite.component;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.project.loslite.interfaces.TokenProvider;
 import org.project.loslite.model.AppUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

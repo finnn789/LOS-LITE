@@ -21,6 +21,11 @@
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <blaze-persistence.version>1.6.15</blaze-persistence.version>
+        <!-- 5.1.0 = versi terakhir dari groupId ASLI com.querydsl (project ini sudah tidak
+             dikembangkan lagi, tidak pernah rilis versi patch - fix CVE-2024-49203 di bawah
+             cuma ada di fork komunitas io.github.openfeign.querydsl, TAPI kita sengaja tetap
+             di groupId asli ini, lihat alasan di komentar dependency querydsl-core). -->
+        <querydsl.version>5.1.0</querydsl.version>
     </properties>
 
     <dependencies>
@@ -93,6 +98,44 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Blaze-Persistence Entity View: modul TERPISAH dari CriteriaBuilder biasa di atas -
+             DTO projection dideklarasikan lewat interface ber-anotasi @EntityView (lihat
+             RefCodeView), implementasi Impl-nya di-generate annotation processor
+             (blaze-persistence-entity-view-processor-jakarta) mirip Lombok, lalu di-"apply"
+             ke query CriteriaBuilder lewat bean EntityViewManager (lihat QueryConfig &
+             RefCodeRepositoryImpl). -->
+        <dependency>
+            <groupId>com.blazebit</groupId>
+            <artifactId>blaze-persistence-entity-view-api-jakarta</artifactId>
+            <version>${blaze-persistence.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.blazebit</groupId>
+            <artifactId>blaze-persistence-entity-view-impl-jakarta</artifactId>
+            <version>${blaze-persistence.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- QueryDSL - DIPAKAI ULANG, tapi SEMPIT: cuma sebagai generator Q-class (mis. QRefCode)
+             buat type-safety nama field entity di compile-time, BUKAN sebagai query engine.
+             Mesin eksekusi query tetap 100% Blaze-Persistence CriteriaBuilder (lihat
+             RefCodeRepositoryImpl) - Q-class cuma dipakai buat ambil nama property lewat
+             `.getMetadata().getName()`, hasilnya string biasa yang disuntik ke
+             `CriteriaBuilder.where(...)`. Makanya di sini SENGAJA cuma ada querydsl-core
+             (base type Q-class seperti EntityPathBase/StringPath) - TIDAK ada querydsl-jpa
+             ataupun querydsl-sql (mesin JPAQuery/SQLQuery beneran, sumber CVE-2024-49203 lewat
+             JPAQuery.orderBy - lihat komentar di properties). Karena JPAQuery tidak pernah
+             dipanggil sama sekali, jalur vulnerable-nya memang tidak pernah tersentuh, meskipun
+             groupId ini (com.querydsl, BUKAN fork io.github.openfeign.querydsl) sengaja dipin
+             ke versi yang belum ada patch resminya. querydsl-core sendiri persistence-API
+             agnostic (cuma base Path type), jadi tidak butuh classifier "jakarta" (beda dari
+             querydsl-apt di annotationProcessorPaths bawah, yang butuh). -->
+        <dependency>
+            <groupId>com.querydsl</groupId>
+            <artifactId>querydsl-core</artifactId>
+            <version>${querydsl.version}</version>
+        </dependency>
+
         <!-- Lombok: hilangkan boilerplate getter/setter/constructor di entity -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -117,20 +160,6 @@
             <artifactId>jjwt-jackson</artifactId>
             <version>0.12.6</version>
             <scope>runtime</scope>
-        </dependency>
-
-        <!-- Camunda 8 (Zeebe) client - untuk trigger & subscribe proses BPMN yang jalan
-             di broker Zeebe TERPISAH (Camunda 8 Run lokal, lihat README/catatan setup).
-             Versi 8.8.6 dipilih SENGAJA (bukan versi terbaru io.camunda:camunda-spring-boot-3-starter
-             yang baru ada rilis 8.10.0-alpha - masih alpha, belum stabil untuk dipakai):
-             8.8.6 terverifikasi target Spring Boot 3.5.6, cocok dgn parent project ini (3.5.14).
-             Broker lokal (C8Run) yang dipakai versi 8.10.0-alpha3 - ada gap versi client vs
-             broker, tapi protokol gRPC Zeebe umumnya backward-compatible; kalau nanti ada error
-             handshake/versi saat connect, ini kandidat pertama yang perlu dicek. -->
-        <dependency>
-            <groupId>io.camunda</groupId>
-            <artifactId>camunda-spring-boot-starter</artifactId>
-            <version>8.8.6</version>
         </dependency>
 
         <!-- Test -->
@@ -172,6 +201,65 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!-- annotationProcessorPaths dideklarasikan MANUAL di sini karena
+                 blaze-persistence-entity-view-processor-jakarta butuh diaktifkan sebagai
+                 annotation processor (generate Impl class dari interface @EntityView, lihat
+                 RefCodeView & QueryConfig). CATATAN PENTING: begitu salah satu processor path
+                 dikonfigurasi manual, Maven berhenti auto-detect processor dari classpath -
+                 Lombok WAJIB ikut dicantumkan di sini juga, kalau tidak getter/setter/builder
+                 di semua entity berhenti ter-generate.
+
+                 CATATAN #2: classpath annotationProcessorPaths itu TERISOLASI dari classpath
+                 compile biasa - bukan cuma daftar tambahan, tapi classpath processor sendiri
+                 dari nol. Processor Entity View butuh baca class jakarta.persistence.Entity
+                 buat scan @Entity yang dirujuk tiap @EntityView, tapi jakarta.persistence-api
+                 (biasanya numpang lewat spring-boot-starter-data-jpa) TIDAK otomatis ikut ke
+                 classpath ini - makanya jakarta.persistence-api WAJIB didaftarkan eksplisit
+                 juga di sini, kalau tidak processor-nya crash NoClassDefFoundError dan
+                 seluruh round annotation processing gagal (Lombok punya ikut nggak jalan). -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                        <path>
+                            <groupId>com.blazebit</groupId>
+                            <artifactId>blaze-persistence-entity-view-processor-jakarta</artifactId>
+                            <version>${blaze-persistence.version}</version>
+                        </path>
+                        <!-- Generate Q-class (mis. QRefCode) dari entity ber-anotasi @Entity -
+                             classifier "jakarta" WAJIB dipilih (bukan default/"jpa") karena
+                             project ini pakai jakarta.persistence.*, bukan javax.persistence.*.
+                             Hasil generate-nya masuk target/generated-sources/annotations, satu
+                             paket dengan entity aslinya (lihat catatan di querydsl-core, pom
+                             ini). Lupa daftarin di sini -> Q-class tidak ke-generate sama
+                             sekali, RefCodeRepositoryImpl gagal compile "cannot find symbol
+                             QRefCode". -->
+                        <path>
+                            <groupId>com.querydsl</groupId>
+                            <artifactId>querydsl-apt</artifactId>
+                            <version>${querydsl.version}</version>
+                            <classifier>jakarta</classifier>
+                        </path>
+                        <path>
+                            <groupId>jakarta.persistence</groupId>
+                            <artifactId>jakarta.persistence-api</artifactId>
+                            <version>${jakarta-persistence.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                    <!-- Sengaja TIDAK diisi <annotationProcessors> - dengan dibiarkan kosong,
+                         Maven compiler plugin otomatis pakai SEMUA processor yang terdaftar di
+                         META-INF/services milik tiap jar di annotationProcessorPaths di atas
+                         (Lombok & entity-view-processor keduanya sudah daftar processor-nya
+                         sendiri). Hardcode nama class processor di sini rawan salah/berubah
+                         antar versi. -->
+                </configuration>
             </plugin>
         </plugins>
     </build>

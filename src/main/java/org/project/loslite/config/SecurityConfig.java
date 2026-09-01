@@ -1,7 +1,9 @@
 package org.project.loslite.config;
 
 import lombok.RequiredArgsConstructor;
-import org.project.loslite.service.JwtAuthenticationFilter;
+import org.project.loslite.component.JwtAuthenticationFilter;
+import org.project.loslite.component.RestAccessDeniedHandler;
+import org.project.loslite.component.RestAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -30,6 +32,8 @@ public class SecurityConfig {
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
+    private final RestAccessDeniedHandler restAccessDeniedHandler;
 
     /**
      * BCrypt: algoritma hashing satu-arah + otomatis pakai salt acak per password,
@@ -43,26 +47,22 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // CSRF itu proteksi khusus untuk sesi berbasis cookie/browser form.
-                // Kita stateless + kirim JWT lewat header Authorization -> tidak relevan, aman dimatikan.
                 .csrf(AbstractHttpConfigurer::disable)
-                
-                // login kita sendiri lewat POST /auth/login yang mengembalikan JWT.
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
-                // STATELESS: server TIDAK menyimpan session user di memori/cookie.
-                // Setiap request wajib bawa bukti identitasnya sendiri (JWT), tidak mengandalkan session.
+
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_PATHS).permitAll()
                         .anyRequest().authenticated()
+                )
+                // Penolakan dari FilterChain (belum login / role salah) terjadi SEBELUM
+                // DispatcherServlet, jadi GlobalExceptionHandler tidak kepanggil untuk ini -
+                // makanya perlu didaftarkan manual di sini, bukan lewat @ExceptionHandler.
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(restAuthenticationEntryPoint)
+                        .accessDeniedHandler(restAccessDeniedHandler)
                 );
-
-        // Sisipkan JwtAuthenticationFilter SEBELUM UsernamePasswordAuthenticationFilter
-        // (filter bawaan Spring Security untuk login form, yang kita disable tapi tetap
-        // ada di chain). Urutan ini penting: SecurityContext harus SUDAH terisi oleh
-        // filter kita SEBELUM filter-filter berikutnya (termasuk authorizeHttpRequests
-        // di atas) mengecek "apakah user ini authenticated?".
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

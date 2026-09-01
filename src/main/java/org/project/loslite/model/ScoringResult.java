@@ -3,6 +3,8 @@ package org.project.loslite.model;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.project.loslite.enums.ScoreBucket;
 import org.project.loslite.enums.ScoringDecision;
 
@@ -46,6 +48,7 @@ public class ScoringResult extends BaseEntity {
 
     // Jejak rule mana saja yang "menyala" saat scoring — untuk explainability,
     // supaya keputusan approve/reject bisa dijelaskan, bukan black-box.
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "rule_trace", columnDefinition = "JSON")
     private String ruleTrace;
 

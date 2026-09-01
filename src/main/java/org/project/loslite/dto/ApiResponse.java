@@ -1,6 +1,11 @@
 package org.project.loslite.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -11,14 +16,19 @@ import java.util.List;
  * tahu persis field apa yang akan ada, tidak perlu logic berbeda tergantung
  * sukses/gagal. Cukup baca field "success" untuk tahu mana yang terjadi.
  */
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public record ApiResponse<T>(
-        boolean success,
-        String message,
-        T data,
-        List<FieldErrorDetail> validationErrors,
-        LocalDateTime timestamp
-) {
+public class ApiResponse<T> {
+
+    private boolean success;
+    private String message;
+    private T data;
+    private List<FieldErrorDetail> validationErrors;
+    private LocalDateTime timestamp;
 
     public static <T> ApiResponse<T> success(String message, T data) {
         return new ApiResponse<>(true, message, data, null, LocalDateTime.now());
@@ -32,6 +42,13 @@ public record ApiResponse<T>(
         return new ApiResponse<>(false, message, null, validationErrors, LocalDateTime.now());
     }
 
-    public record FieldErrorDetail(String field, String message) {
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class FieldErrorDetail {
+        private String field;
+        private String message;
     }
 }

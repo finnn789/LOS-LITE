@@ -8,12 +8,18 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Bean setup buat Blaze-Persistence (CriteriaBuilderFactory) - satu-satunya query tool
- * yang dipakai project ini (QueryDSL murni/JPAQueryFactory sengaja tidak dipakai lagi,
- * lihat ApplicantRepository buat pola query-nya). EntityManagerFactory yang dipakai di
- * sini SAMA dengan yang dipegang JpaRepository biasa - jadi query lewat Blaze dan lewat
- * *Repository yang sudah ada tetap ikut transaksi Spring yang sama (@Transactional di
- * Service, bukan di sini).
+ * Bean setup buat Blaze-Persistence, satu-satunya query tool project ini (QueryDSL sudah
+ * dicabut - lihat pom.xml). {@link CriteriaBuilderFactory} - query builder mentah di atas
+ * JPA Criteria, dipakai langsung untuk query BERAT (multi-join, filter dinamis, DTO
+ * projection lewat {@code selectNew(...)}, pagination), lihat
+ * {@code LoanApplicationRepository#search}. Dibangun di atas {@link EntityManagerFactory}
+ * yang SAMA dengan yang dipegang *Repository lain - jadi query lewat sini tetap ikut
+ * transaksi Spring yang sama (@Transactional di Service, bukan di sini).
+ * <p>
+ * Bean {@code EntityViewManager}/{@code EntityViewConfiguration} (lapisan Blaze-Persistence
+ * Entity View di atas CriteriaBuilderFactory, dipakai proyeksi {@code @EntityView}) sempat
+ * ada di sini tapi sudah dicabut - satu-satunya pemakainya ({@code RefCodeView} +
+ * {@code RefCodeRepositoryImpl}) sudah dihapus dari codebase.
  */
 @Configuration
 public class QueryConfig {

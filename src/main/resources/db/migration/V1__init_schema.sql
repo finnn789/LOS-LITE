@@ -55,22 +55,7 @@ CREATE TABLE loan_application (
 ) ENGINE = InnoDB;
 
 -- =========================================================
--- 4. document — dokumen ter-upload (KTP, slip gaji) untuk satu loan_application
--- =========================================================
-CREATE TABLE document (
-    id                   BIGINT AUTO_INCREMENT PRIMARY KEY,
-    loan_application_id  BIGINT       NOT NULL,
-    document_type        VARCHAR(30)  NOT NULL,
-    file_path            VARCHAR(500) NOT NULL,
-    ocr_status           VARCHAR(20)  NOT NULL,
-    ocr_raw_result       JSON         NULL,
-    uploaded_at          DATETIME(6)  NOT NULL,
-    CONSTRAINT fk_document_loan_application
-        FOREIGN KEY (loan_application_id) REFERENCES loan_application (id)
-) ENGINE = InnoDB;
-
--- =========================================================
--- 5. scoring_result — histori hasil scoring (DTI + rule engine), versioned
+-- 4. scoring_result — histori hasil scoring (DTI + rule engine), versioned
 -- =========================================================
 CREATE TABLE scoring_result (
     id                   BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -85,7 +70,7 @@ CREATE TABLE scoring_result (
 ) ENGINE = InnoDB;
 
 -- =========================================================
--- 6. audit_log — audit trail generik/polymorphic (entity_type + entity_id)
+-- 5. audit_log — audit trail generik/polymorphic (entity_type + entity_id)
 -- =========================================================
 CREATE TABLE audit_log (
     id            BIGINT AUTO_INCREMENT PRIMARY KEY,

@@ -1,0 +1,113 @@
+{
+  "task": {
+    "taskId": "2251799813686432",
+    "taskDefinitionId": "OfficerReview",
+    "name": "Officer Review",
+    "processDefinitionId": "loan-application-process",
+    "processInstanceKey": "2251799813685251",
+    "assignee": null,
+    "candidateGroups": ["loan-officer"],
+    "taskState": "CREATED",
+    "creationTime": "2026-08-27T02:14:03.512Z",
+    "completionTime": null,
+    "dueDate": null,
+    "formKey": "camunda-forms:bpmn:userTaskForm_OfficerReview"
+  },
+  "context": {
+    "_comment": "Data ini TIDAK datang dari Zeebe variables - broker cuma nyimpen loanApplicationId (lihat Fase 3 di camunda-workflow-plan.md). Backend proxy endpoint yang query DB pakai loanApplicationId itu, lalu gabungin ke response ini biar Form Generator FE punya context buat ditampilkan.",
+    "loanApplicationId": 4821,
+    "status": "SCORING",
+    "applicant": {
+      "fullName": "Siti Rahmawati",
+      "nikMasked": "35********1234",
+      "dateOfBirth": "1994-03-11",
+      "phoneNumber": "081234567890",
+      "email": "siti.rahmawati@example.com"
+    },
+    "loan": {
+      "loanAmountRequested": 50000000.00,
+      "loanTenorMonths": 24,
+      "purpose": "Renovasi rumah",
+      "monthlyIncome": 8500000.00,
+      "monthlyDebtObligation": 2100000.00
+    },
+    "scoring": {
+      "dtiRatio": 0.2471,
+      "scoreBucket": "MEDIUM",
+      "decision": "MANUAL_REVIEW",
+      "ruleTrace": [
+        "DTI_RATIO_BETWEEN_20_AND_30_PERCENT -> MEDIUM_RISK",
+        "NO_ACTIVE_BLACKLIST_FLAG",
+        "REQUESTED_AMOUNT_ABOVE_AUTO_APPROVE_THRESHOLD -> ESCALATE_TO_MANUAL_REVIEW"
+      ],
+      "calculatedAt": "2026-08-27T02:13:58.201Z"
+    }
+  },
+  "variables": {
+    "_comment": "Ini persis variable yang benar-benar hidup di process instance Zeebe (sesuai diagram Fase 3/4 di plan).",
+    "loanApplicationId": 4821,
+    "decision": "MANUAL_REVIEW"
+  },
+  "formSchema": {
+    "type": "default",
+    "id": "userTaskForm_OfficerReview",
+    "schemaVersion": 17,
+    "exporter": {
+      "name": "form-js (loslite form-generator dummy)",
+      "version": "1.0.0"
+    },
+    "components": [
+      { "type": "text", "id": "heading", "text": "## Tinjauan Manual — Pengajuan #{{loanApplicationId}}" },
+      {
+        "type": "group",
+        "id": "applicantGroup",
+        "label": "Data Applicant (read-only)",
+        "components": [
+          { "type": "text", "id": "applicantFullName", "text": "**Nama**: {{applicant.fullName}}" },
+          { "type": "text", "id": "applicantNik", "text": "**NIK**: {{applicant.nikMasked}}" },
+          { "type": "text", "id": "applicantDob", "text": "**Tanggal Lahir**: {{applicant.dateOfBirth}}" }
+        ]
+      },
+      {
+        "type": "group",
+        "id": "loanGroup",
+        "label": "Detail Pinjaman (read-only)",
+        "components": [
+          { "type": "text", "id": "loanAmount", "text": "**Jumlah Diajukan**: Rp {{loan.loanAmountRequested}}" },
+          { "type": "text", "id": "loanTenor", "text": "**Tenor**: {{loan.loanTenorMonths}} bulan" },
+          { "type": "text", "id": "loanPurpose", "text": "**Tujuan**: {{loan.purpose}}" },
+          { "type": "text", "id": "monthlyIncome", "text": "**Penghasilan Bulanan**: Rp {{loan.monthlyIncome}}" },
+          { "type": "text", "id": "monthlyDebt", "text": "**Kewajiban Utang Bulanan**: Rp {{loan.monthlyDebtObligation}}" }
+        ]
+      },
+      {
+        "type": "group",
+        "id": "scoringGroup",
+        "label": "Hasil Scoring (read-only)",
+        "components": [
+          { "type": "text", "id": "dtiRatio", "text": "**DTI Ratio**: {{scoring.dtiRatio}}" },
+          { "type": "text", "id": "scoreBucket", "text": "**Score Bucket**: {{scoring.scoreBucket}}" },
+          { "type": "text", "id": "ruleTrace", "text": "**Rule Trace**: {{scoring.ruleTrace}}" }
+        ]
+      },
+      {
+        "type": "radio",
+        "id": "decisionField",
+        "key": "decision",
+        "label": "Keputusan Officer",
+        "validate": { "required": true },
+        "values": [
+          { "label": "Setujui (APPROVE)", "value": "APPROVE" },
+          { "label": "Tolak (REJECT)", "value": "REJECT" }
+        ]
+      },
+      { "type": "button", "id": "submitBtn", "label": "Submit Review", "action": "submit" }
+    ]
+  },
+  "submitContract": {
+    "endpoint": "POST /loan-applications/{loanApplicationId}/review",
+    "requestBodyDto": "ReviewLoanApplicationRequest",
+    "requestBodyExample": { "decision": "APPROVE" },
+    "note": "Field 'decision' SATU-SATUNYA yang divalidasi backend (ReviewLoanApplicationRequest cuma punya @NotNull ReviewDecision decision). Semua field di 'context' murni tampilan, jangan dikirim balik ke endpoint ini."
+  }
+}

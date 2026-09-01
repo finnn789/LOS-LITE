@@ -1,63 +1,27 @@
 spring:
   application:
     name: los-lite
-
   datasource:
     url: jdbc:postgresql://localhost:5432/los_lite
     username: ${DB_USERNAME:los_lite}
     password: ${DB_PASSWORD:los_lite}
-
   jpa:
     hibernate:
-      # Solo/portfolio project, bukan tim & bukan data production - Hibernate yang
-      # auto-generate & auto-alter skema langsung dari @Entity tiap start. Flyway
-      # sengaja DILEPAS (lihat pom.xml) supaya cuma ada 1 sumber kebenaran skema:
-      # kode entity itu sendiri, bukan campuran entity + file migration manual.
-      # Resiko yang WAJIB diingat: rename kolom TIDAK terdeteksi (kolom lama nganggur,
-      # bukan di-rename), jadi kalau rename field, drop kolom lama manual via DB client.
       ddl-auto: update
     open-in-view: false
-
-  servlet:
-    multipart:
-      max-file-size: 5MB
-      max-request-size: 5MB
-
 server:
-  # 8080 SUDAH dipakai Camunda 8 Run (C8Run) lokal untuk REST API/Operate/Tasklist -
-  # digeser ke 8081 supaya tidak bentrok saat app ini & C8Run jalan bersamaan.
   port: 8081
-
-ocr:
-  service:
-    base-url: ${OCR_SERVICE_BASE_URL:http://localhost:8000}
-
-camunda:
-  client:
-    # Saklar ON/OFF Camunda. false = SELURUH autoconfigure Camunda (client, health
-    # indicator, job worker scanner buat @JobWorker di LoanApplicationWorkflowService,
-    # dst) tidak dipasang sama sekali - app tetap start normal walau C8Run tidak
-    # jalan. Ini property resmi bawaan camunda-spring-boot-starter (bukan hack),
-    # lihat io.camunda.client.spring.configuration.condition.ConditionalOnCamundaClientEnabled
-    # yang membungkus io.camunda.client.spring.configuration.CamundaAutoConfiguration.
-    # Override lewat env var CAMUNDA_ENABLED=false kalau C8Run lokal lagi tidak jalan.
-    enabled: ${CAMUNDA_ENABLED:false}
-    # self-managed = connect ke broker Zeebe milik sendiri (C8Run lokal),
-    # BUKAN Camunda 8 SaaS (cloud).
-    mode: self-managed
-    # C8Run lokal default TANPA auth - kalau nanti pindah ke Docker Compose/SaaS
-    # yang ada Keycloak, ini wajib diganti ke method: basic/oidc + isi credential-nya.
-    auth:
-      method: none
-    # Alamat gRPC Gateway Zeebe - port 26500, dikonfirmasi listening dari cek proses C8Run.
-    grpc-address: http://localhost:26500
-    # Alamat REST API Camunda 8 (dipakai starter untuk operasi non-gRPC) - port 8080,
-    # ini port C8Run, BUKAN port app ini (lihat server.port di atas).
-    rest-address: http://localhost:8080
-
+# WORKFLOW-APP: workflow orchestrator terpisah (Camunda 7 external, lihat
+# workflow/LoanApplicationWorkflowService.java untuk pemakaiannya). service-token BELUM
+# final - tim WORKFLOW-APP belum konfirmasi algoritma JWT (RS256/JWKS vs HS256) & klaim
+# role yang diharapkan, jadi sementara ini string mentah dikirim apa adanya sebagai
+# Authorization: Bearer <token>. Ganti WORKFLOW_APP_SERVICE_TOKEN begitu sudah dikonfirmasi.
+workflow-app:
+  enabled: ${WORKFLOW_APP_ENABLED:true}
+  base-url: ${WORKFLOW_APP_BASE_URL:http://localhost:8090}
+  service-token: ${WORKFLOW_APP_SERVICE_TOKEN:}
+  service-code: ${WORKFLOW_APP_SERVICE_CODE:LOS-LITE}
+  business-flow-code: ${WORKFLOW_APP_BUSINESS_FLOW_CODE:LOAN_ORIGINATION}
 jwt:
-  # WAJIB di-override lewat .env (JWT_SECRET) untuk environment nyata.
-  # Default di bawah cuma supaya app bisa langsung jalan pas local dev.
-  # Minimal 256 bit (32 karakter) karena dipakai sign HS256.
   secret: ${JWT_SECRET:dev-only-secret-key-jangan-dipakai-di-production-ganti-ini}
   expiration-ms: ${JWT_EXPIRATION_MS:3600000} # 1 jam

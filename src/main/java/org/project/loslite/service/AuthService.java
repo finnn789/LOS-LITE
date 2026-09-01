@@ -3,6 +3,7 @@ package org.project.loslite.service;
 import lombok.RequiredArgsConstructor;
 import org.project.loslite.dto.AuthResult;
 import org.project.loslite.enums.UserRole;
+import org.project.loslite.interfaces.TokenProvider;
 import org.project.loslite.model.AppUser;
 import org.project.loslite.repository.AppUserRepository;
 import org.project.loslite.exception.DuplicateResourceException;

@@ -1,4 +1,4 @@
-package org.project.loslite.service;
+package org.project.loslite.interfaces;
 
 import org.project.loslite.model.AppUser;
 
