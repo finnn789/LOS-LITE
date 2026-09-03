@@ -5,7 +5,7 @@ import org.project.loslite.dto.AuthResult;
 import org.project.loslite.enums.UserRole;
 import org.project.loslite.interfaces.TokenProvider;
 import org.project.loslite.model.AppUser;
-import org.project.loslite.repository.AppUserRepository;
+import org.project.loslite.persist.AppUserPersist;
 import org.project.loslite.exception.DuplicateResourceException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,13 +27,13 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final AppUserRepository appUserRepository;
+    private final AppUserPersist appUserPersist;
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
 
     public AuthResult login(String username, String rawPassword) {
 
-        AppUser user = appUserRepository.findByUsername(username)
+        AppUser user = appUserPersist.findByUsername(username)
                 .orElseThrow(() -> new BadCredentialsException("Username atau password salah"));
 
         // passwordEncoder.matches(raw, hash) -> cocokkan password mentah dari user
@@ -60,7 +60,7 @@ public class AuthService {
     @Transactional
     public AppUser register(String username, String rawPassword, String fullName,UserRole role) {
 
-        if (appUserRepository.existsByUsername(username)) {
+        if (appUserPersist.existsByUsername(username)) {
             throw new DuplicateResourceException("Username '" + username + "' sudah dipakai");
         }
 
@@ -71,7 +71,7 @@ public class AuthService {
                 .role(role)
                 .build();
 
-        return appUserRepository.save(newUser);
+        return appUserPersist.save(newUser);
     }
 
 

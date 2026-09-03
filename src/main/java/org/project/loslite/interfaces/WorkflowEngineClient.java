@@ -44,4 +44,23 @@ public interface WorkflowEngineClient {
      * pernah melempar ke pemanggil.
      */
     void completeTask(String taskId, Map<String, Object> variables);
+
+    /**
+     * Selesaikan satu Camunda EXTERNAL TASK (BUKAN User Task, lihat {@link #completeTask})
+     * untuk businessKey & topic tertentu - dipakai node BPMN yang
+     * {@code camunda:type="external"} (mis. topic {@code "document-verification"}).
+     * Implementasi WAJIB fetch+lock+complete-nya SECARA SINKRON dalam satu request ke
+     * WORKFLOW-APP (bukan lewat mekanisme fetchAndLock polling worker terpisah) - lihat
+     * dokumentasi kontrak endpoint
+     * {@code POST /api/v1/business-processes/{businessKey}/external-tasks/{topic}/complete}.
+     * <p>
+     * Best-effort sama seperti {@link #completeTask} - implementasi menelan exception-nya
+     * sendiri, tidak pernah melempar ke pemanggil. 404 (task belum sampai node itu / sudah
+     * pernah di-complete sebelumnya / process belum start - dokumentasi kontrak endpoint
+     * ini mengembalikan errorCode yang SAMA untuk semua kasus tsb) adalah state NORMAL;
+     * error selain itu (mis. 502 - Camunda menolak variable atau engine unreachable)
+     * menandakan kemungkinan bug integrasi nyata dan harus dibedakan level log-nya oleh
+     * implementasi.
+     */
+    void completeExternalTask(String businessKey, String topic, Map<String, Object> variables);
 }

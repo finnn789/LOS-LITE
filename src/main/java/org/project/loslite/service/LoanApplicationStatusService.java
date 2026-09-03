@@ -7,8 +7,8 @@ import org.project.loslite.enums.LoanStatus;
 import org.project.loslite.model.AppUser;
 import org.project.loslite.model.AuditLog;
 import org.project.loslite.model.LoanApplication;
-import org.project.loslite.repository.AuditLogRepository;
-import org.project.loslite.repository.LoanApplicationRepository;
+import org.project.loslite.persist.AuditLogPersist;
+import org.project.loslite.persist.LoanApplicationPersist;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,8 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class LoanApplicationStatusService {
 
-    private final LoanApplicationRepository loanApplicationRepository;
-    private final AuditLogRepository auditLogRepository;
+    private final LoanApplicationPersist loanApplicationPersist;
+    private final AuditLogPersist auditLogPersist;
     private final LoanStatusTransitionValidator transitionValidator;
     private final ObjectMapper objectMapper;
 
@@ -39,7 +39,7 @@ public class LoanApplicationStatusService {
         transitionValidator.validateTransition(oldStatus, newStatus);
 
         loanApplication.setStatus(newStatus);
-        LoanApplication saved = loanApplicationRepository.save(loanApplication);
+        LoanApplication saved = loanApplicationPersist.save(loanApplication);
 
         writeAuditLog(saved, oldStatus, newStatus, performedBy);
 
@@ -56,7 +56,7 @@ public class LoanApplicationStatusService {
                 .performedBy(performedBy)
                 .build();
 
-        auditLogRepository.save(auditLog);
+        auditLogPersist.save(auditLog);
     }
 
     private String toJson(LoanStatus status) {

@@ -138,6 +138,43 @@ public class WorkflowAppClient implements WorkflowEngineClient {
         }
     }
 
+    @Override
+    public void completeExternalTask(String businessKey, String topic, Map<String, Object> variables) {
+        if (!enabled) {
+            return;
+        }
+
+        try {
+            ApiEnvelope<ExternalTaskCompletionView> envelope = workflowAppWebClient.post()
+                    .uri("/api/v1/business-processes/{businessKey}/external-tasks/{topic}/complete", businessKey, topic)
+                    .bodyValue(new CompleteTaskRequest(variables))
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<ApiEnvelope<ExternalTaskCompletionView>>() {})
+                    .block();
+
+            ExternalTaskCompletionView data = envelope != null ? envelope.data() : null;
+            log.info("External task topic='{}' berhasil di-complete di WORKFLOW-APP untuk businessKey={} (externalTaskId={}, activityId={})",
+                    topic, businessKey, data != null ? data.externalTaskId() : null, data != null ? data.activityId() : null);
+        } catch (WebClientResponseException.NotFound e) {
+            // 404 RESOURCE_NOT_FOUND - dokumentasi kontrak endpoint ini eksplisit: SEMUA
+            // kasus "tidak ketemu" (businessKey belum pernah trigger, process Camunda
+            // belum start, task belum sampai node itu, ATAU sudah pernah di-complete
+            // sebelumnya) dikembalikan errorCode yang SAMA, cuma beda di `message` bebas -
+            // sengaja TIDAK dibedakan lagi di sini. Diperlakukan sebagai state NORMAL
+            // (mis. retry aman kalau endpoint document-verification LOS-LITE dipanggil
+            // dua kali), bukan kegagalan - makanya info, bukan warn.
+            log.info("External task topic='{}' tidak ditemukan untuk businessKey={} - state normal (belum sampai node itu / sudah pernah selesai / process belum start), skip", topic, businessKey);
+        } catch (Exception e) {
+            // Termasuk 502 CAMUNDA_INTEGRATION_ERROR - BEDA KELAS masalah dari 404 di
+            // atas: variable ditolak Camunda atau engine unreachable, kemungkinan BUG
+            // INTEGRASI NYATA (mis. gateway BPMN berikutnya butuh variable yang tidak kita
+            // kirim), bukan sekadar "belum waktunya". Tetap best-effort (tidak throw ke
+            // pemanggil - lihat javadoc WorkflowEngineClient#completeExternalTask), tapi
+            // log lebih keras supaya tidak kelewat kalau memang ada masalah.
+            log.warn("Gagal complete external task topic='{}' di WORKFLOW-APP untuk businessKey={} - kemungkinan BUG INTEGRASI (variable ditolak Camunda / engine unreachable), BUKAN state normal seperti 404", topic, businessKey, e);
+        }
+    }
+
     // ------------------------------------------------------------------
     // Bentuk wire JSON WORKFLOW-APP - PRIVATE, tidak pernah bocor keluar class ini.
     // ------------------------------------------------------------------
@@ -175,5 +212,19 @@ public class WorkflowAppClient implements WorkflowEngineClient {
             String businessKey,
             String camundaProcessInstanceId,
             String status) {
+    }
+
+    /**
+     * Subset field response sukses {@code POST .../external-tasks/{topic}/complete} -
+     * lihat dokumentasi kontrak endpoint ini di WORKFLOW-APP. Cuma dipakai untuk logging
+     * ({@link #completeExternalTask}) - {@link WorkflowEngineClient#completeExternalTask}
+     * sendiri best-effort/void, jadi tidak ada yang perlu ditulis balik ke database.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record ExternalTaskCompletionView(
+            String externalTaskId,
+            String topicName,
+            String processInstanceId,
+            String activityId) {
     }
 }

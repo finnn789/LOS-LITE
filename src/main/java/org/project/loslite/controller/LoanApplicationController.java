@@ -5,7 +5,6 @@ import lombok.RequiredArgsConstructor;
 import org.project.loslite.dto.CreateLoanApplicationCommand;
 import org.project.loslite.dto.ReviewLoanApplicationRequest;
 import org.project.loslite.service.LoanApplicationService;
-import org.project.loslite.service.ScoringService;
 import org.project.loslite.model.LoanApplication;
 import org.project.loslite.service.ScoringOutcome;
 import org.project.loslite.dto.ApiResponse;
@@ -22,9 +21,10 @@ import org.springframework.web.bind.annotation.*;
  * document verification -> scoring -> review (jalur MANUAL_REVIEW) -> disburse. Setiap
  * endpoint di sini murni terima request, panggil use-case service yang sesuai, bungkus
  * hasil jadi response - tidak ada logika bisnis/state-machine sama sekali di sini (itu
- * ada di application/domain layer). submit/review/disburse sengaja lewat
- * {@link LoanApplicationWorkflowService} (bukan LoanApplicationService) karena
- * ketiganya memicu orkestrasi Camunda - lihat javadoc class itu.
+ * ada di application/domain layer). submit/document-verification/scoring/review/disburse
+ * sengaja lewat {@link LoanApplicationWorkflowService} (bukan LoanApplicationService/
+ * ScoringService langsung) karena semuanya memicu orkestrasi Camunda - lihat javadoc
+ * class itu.
  */
 @RestController
 @RequestMapping("/loan-applications")
@@ -33,7 +33,6 @@ public class LoanApplicationController {
 
     private final LoanApplicationService loanApplicationService;
     private final LoanApplicationWorkflowService loanApplicationWorkflowService;
-    private final ScoringService scoringService;
 
     @PostMapping
     public ResponseEntity<ApiResponse<LoanApplicationResponse>> create(
@@ -66,15 +65,25 @@ public class LoanApplicationController {
         return ResponseEntity.ok(ApiResponse.success("Pengajuan berhasil disubmit", toResponse(submitted)));
     }
 
+    // Lewat LoanApplicationWorkflowService (bukan LoanApplicationService langsung) - node
+    // "Verifikasi Dokumen" di BPMN WORKFLOW-APP adalah Camunda EXTERNAL TASK (topic
+    // "document-verification"), endpoint ini yang memicu penyelesaiannya di Camunda,
+    // lihat LoanApplicationWorkflowService#moveToDocumentVerification.
     @PostMapping("/{id}/document-verification")
     public ResponseEntity<ApiResponse<LoanApplicationResponse>> moveToDocumentVerification(@PathVariable Long id) {
-        LoanApplication moved = loanApplicationService.moveToDocumentVerification(id);
+        LoanApplication moved = loanApplicationWorkflowService.moveToDocumentVerification(id);
+
         return ResponseEntity.ok(ApiResponse.success("Pengajuan masuk tahap verifikasi dokumen", toResponse(moved)));
     }
 
+    // Lewat LoanApplicationWorkflowService (bukan ScoringService langsung) - node
+    // "Jalankan Scoring" di BPMN WORKFLOW-APP adalah Camunda EXTERNAL TASK (topic
+    // "run-scoring"), endpoint ini yang memicu penyelesaiannya di Camunda (kirim variable
+    // "decision" supaya gateway "Keputusan Scoring?" ikut ke-route), lihat
+    // LoanApplicationWorkflowService#runScoring.
     @PostMapping("/{id}/scoring")
     public ResponseEntity<ApiResponse<ScoringResponse>> runScoring(@PathVariable Long id) {
-        ScoringOutcome outcome = scoringService.score(id);
+        ScoringOutcome outcome = loanApplicationWorkflowService.runScoring(id);
 
         ScoringResponse response = new ScoringResponse(
                 outcome.dtiRatio(),

@@ -1,4 +1,4 @@
-package org.project.loslite.repository;
+package org.project.loslite.persist;
 
 import com.blazebit.persistence.CriteriaBuilder;
 import com.blazebit.persistence.CriteriaBuilderFactory;
@@ -21,7 +21,7 @@ import java.util.List;
  */
 @Repository
 @RequiredArgsConstructor
-public class AuditLogRepository {
+public class AuditLogPersist {
 
     private static final QAuditLog qAuditLog = new QAuditLog("al");
 

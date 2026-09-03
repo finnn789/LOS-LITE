@@ -1,4 +1,4 @@
-package org.project.loslite.repository;
+package org.project.loslite.persist;
 
 import com.blazebit.persistence.CriteriaBuilder;
 import com.blazebit.persistence.CriteriaBuilderFactory;
@@ -24,7 +24,7 @@ import java.util.Optional;
  */
 @Repository
 @RequiredArgsConstructor
-public class ApplicantRepository {
+public class ApplicantPersist {
 
     private static final QApplicant qApplicant = new QApplicant("a");
 

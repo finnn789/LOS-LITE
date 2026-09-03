@@ -3,7 +3,7 @@ package org.project.loslite.service;
 import lombok.RequiredArgsConstructor;
 import org.project.loslite.dto.CreateApplicantCommand;
 import org.project.loslite.model.Applicant;
-import org.project.loslite.repository.ApplicantRepository;
+import org.project.loslite.persist.ApplicantPersist;
 import org.project.loslite.exception.DuplicateResourceException;
 import org.project.loslite.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
@@ -18,7 +18,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ApplicantService {
 
-    private final ApplicantRepository applicantRepository;
+    private final ApplicantPersist applicantPersist;
 
     @Transactional
     public Applicant create(CreateApplicantCommand command) {
@@ -27,7 +27,7 @@ public class ApplicantService {
         // Cek duplikat lewat HASH, bukan NIK mentah - konsisten dengan desain akhir
         // nanti (saat NIK sudah dienkripsi, NIK asli tidak bisa di-query langsung
         // di WHERE clause, tapi hash-nya tetap bisa karena deterministic).
-        if (applicantRepository.existsByNikHash(nikHash)) {
+        if (applicantPersist.existsByNikHash(nikHash)) {
             throw new DuplicateResourceException("Applicant dengan NIK ini sudah terdaftar");
         }
 
@@ -45,19 +45,19 @@ public class ApplicantService {
                 .address(command.address())
                 .build();
 
-        return applicantRepository.save(applicant);
+        return applicantPersist.save(applicant);
     }
 
     @Transactional(readOnly = true)
     public Applicant getById(Long id) {
-        return applicantRepository.findById(id)
+        return applicantPersist.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Applicant dengan id " + id + " tidak ditemukan"));
     }
 
     @Transactional(readOnly = true)
     public List<Applicant> getAll() {
-        return applicantRepository.findAll();
+        return applicantPersist.findAll();
     }
 
     // SHA-256 satu arah, BUKAN untuk sembunyikan NIK (itu tugas enkripsi nanti),

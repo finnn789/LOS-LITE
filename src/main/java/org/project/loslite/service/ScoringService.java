@@ -8,8 +8,8 @@ import org.project.loslite.enums.ScoringDecision;
 import org.project.loslite.model.Applicant;
 import org.project.loslite.model.LoanApplication;
 import org.project.loslite.model.ScoringResult;
-import org.project.loslite.repository.LoanApplicationRepository;
-import org.project.loslite.repository.ScoringResultRepository;
+import org.project.loslite.persist.LoanApplicationPersist;
+import org.project.loslite.persist.ScoringResultPersist;
 import org.project.loslite.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,8 +27,8 @@ import java.time.Instant;
 @RequiredArgsConstructor
 public class ScoringService {
 
-    private final LoanApplicationRepository loanApplicationRepository;
-    private final ScoringResultRepository scoringResultRepository;
+    private final LoanApplicationPersist loanApplicationPersist;
+    private final ScoringResultPersist scoringResultPersist;
     private final RuleEngine ruleEngine;
     private final ObjectMapper objectMapper;
     private final LoanApplicationStatusService loanApplicationStatusService;
@@ -36,7 +36,7 @@ public class ScoringService {
     @Transactional
     public ScoringOutcome score(Long loanApplicationId) {
 
-        LoanApplication loanApplication = loanApplicationRepository.findById(loanApplicationId)
+        LoanApplication loanApplication = loanApplicationPersist.findById(loanApplicationId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "LoanApplication dengan id " + loanApplicationId + " tidak ditemukan"));
 
@@ -65,7 +65,7 @@ public class ScoringService {
                 .ruleTrace(toJson(outcome.ruleTrace()))
                 .build();
 
-        scoringResultRepository.save(scoringResult);
+        scoringResultPersist.save(scoringResult);
     }
 
     private void applyDecisionToLoanStatus(LoanApplication loanApplication, ScoringDecision decision) {
@@ -77,12 +77,12 @@ public class ScoringService {
                 // dan penulisan AuditLog.
                 loanApplicationStatusService.changeStatus(loanApplication, LoanStatus.APPROVED, null);
                 loanApplication.setDecidedAt(Instant.now());
-                loanApplicationRepository.save(loanApplication);
+                loanApplicationPersist.save(loanApplication);
             }
             case REJECT -> {
                 loanApplicationStatusService.changeStatus(loanApplication, LoanStatus.REJECTED, null);
                 loanApplication.setDecidedAt(Instant.now());
-                loanApplicationRepository.save(loanApplication);
+                loanApplicationPersist.save(loanApplication);
             }
             case MANUAL_REVIEW -> {
                 // Sengaja TIDAK ubah status & TIDAK set decidedAt - pengajuan tetap

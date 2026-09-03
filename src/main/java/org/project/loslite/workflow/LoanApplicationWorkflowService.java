@@ -1,20 +1,22 @@
 package org.project.loslite.workflow;
 
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.project.loslite.dto.CreateLoanApplicationCommand;
 import org.project.loslite.dto.WorkflowTaskInfo;
 import org.project.loslite.dto.WorkflowTriggerResult;
 import org.project.loslite.enums.LoanStatus;
 import org.project.loslite.enums.ReviewDecision;
+import org.project.loslite.enums.ScoringDecision;
 import org.project.loslite.interfaces.WorkflowEngineClient;
 import org.project.loslite.model.LoanApplication;
-import org.project.loslite.repository.LoanApplicationRepository;
+import org.project.loslite.persist.LoanApplicationPersist;
 import org.project.loslite.service.LoanApplicationService;
 import org.project.loslite.service.LoanApplicationStatusService;
+import org.project.loslite.service.ScoringOutcome;
+import org.project.loslite.service.ScoringService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
@@ -28,9 +30,11 @@ import java.util.Optional;
  * eksternal lewat REST-nya, lihat dokumentasi integrasi) - dua arah sekaligus, SATU tempat:
  * <pre>
  * Domain -> WORKFLOW-APP (kita yang panggil REST-nya):
- *    submit()   -> trigger business process saat pengajuan disubmit
- *    review()   -> complete User Task "Officer Review" (jalur MANUAL_REVIEW)
- *    disburse() -> complete User Task "Disburse Funds"
+ *    submit()                     -> trigger business process saat pengajuan disubmit
+ *    moveToDocumentVerification() -> complete EXTERNAL TASK topic "document-verification"
+ *    runScoring()                 -> complete EXTERNAL TASK topic "run-scoring"
+ *    review()                     -> complete User Task "Officer Review" (jalur MANUAL_REVIEW)
+ *    disburse()                   -> complete User Task "Disburse Funds"
  * </pre>
  * Kenapa digabung di 1 class (bukan dipisah lagi jadi "ApplicationService" murni yang
  * dibungkus WorkflowService, atau dihubungkan lewat event): supaya cuma ADA SATU tempat
@@ -44,10 +48,11 @@ import java.util.Optional;
  * ({@link org.project.loslite.component.WorkflowAppClient}) - broker mati/unreachable
  * TIDAK PERNAH bikin request di sini gagal: perubahan status di database (lewat
  * {@link LoanApplicationStatusService}) tetap sah duluan, orkestrasi WORKFLOW-APP cuma
- * "mengikuti" secara best-effort. Endpoint manual /document-verification & /scoring
- * (lihat LoanApplicationController) TIDAK lewat class ini sama sekali - keduanya bukan
- * bagian dari kontrak WORKFLOW-APP (tidak ada job worker/callback dari WORKFLOW-APP ke
- * LOS-LITE untuk keduanya), staff/service lain memanggilnya langsung.
+ * "mengikuti" secara best-effort. TIDAK ADA lagi endpoint manual yang bypass class ini -
+ * /document-verification & /scoring (lihat LoanApplicationController) SAMA-SAMA lewat sini
+ * karena keduanya Camunda EXTERNAL TASK di BPMN ({@code camunda:type="external"}, topic
+ * "document-verification" & "run-scoring") - lihat {@link #moveToDocumentVerification}/
+ * {@link #runScoring}.
  * <p>
  * <strong>Batas transaksi - baca ini sebelum ubah {@link #submit}/{@link #review}/
  * {@link #disburse}:</strong> ketiganya TIDAK dianotasi {@code @Transactional} di level
@@ -73,10 +78,15 @@ import java.util.Optional;
  *     transaksi pendek terpisah lagi setelahnya.</li>
  * </ol>
  * <p>
- * {@code TASK_DEFINITION_*} di bawah HARUS SAMA PERSIS dengan {@code taskDefinitionKey}
- * User Task pada BPMN yang di-deploy di WORKFLOW-APP - nilainya diwarisi dari penamaan
- * element di {@code docs/workflow-form-generator/*.json} (desain lama, belum dikonfirmasi
- * ulang dengan tim WORKFLOW-APP sejak pindah orchestrator).
+ * {@code TASK_DEFINITION_*}/{@code EXTERNAL_TASK_TOPIC_*} di bawah HARUS SAMA PERSIS
+ * dengan {@code id}/{@code camunda:topic} elemen BPMN pada proses
+ * {@code loan-application-process} yang di-deploy WORKFLOW-APP - dikonfirmasi dari XML
+ * BPMN-nya langsung (BUKAN lagi dari {@code docs/workflow-form-generator/*.json}, desain
+ * lama yang nilainya beda dan sudah tidak dipakai acuan). Kalau BPMN-nya di-redeploy
+ * dengan id/topic yang beda, konstanta ini WAJIB disesuaikan ulang - tidak ada validasi
+ * otomatis yang mendeteksi mismatch ini selain gejala tidak langsung: task/gateway
+ * terkait tidak pernah ke-complete/ke-route, cuma kelihatan dari log warn
+ * {@link #completeUserTask}/{@link #completeExternalTask}.
  */
 @Component
 @RequiredArgsConstructor
@@ -85,11 +95,21 @@ public class LoanApplicationWorkflowService {
 
     private static final Logger log = LoggerFactory.getLogger(LoanApplicationWorkflowService.class);
 
-    private static final String TASK_DEFINITION_OFFICER_REVIEW = "OfficerReview";
-    private static final String TASK_DEFINITION_DISBURSE_FUNDS = "DisburseFunds";
+    // taskDefinitionKey = id elemen <bpmn:userTask> di BPMN "loan-application-process"
+    // (tidak ada camunda:formKey/override lain, jadi default Camunda berlaku: id ==
+    // taskDefinitionKey) - dikonfirmasi dari XML BPMN yang dideploy WORKFLOW-APP.
+    private static final String TASK_DEFINITION_OFFICER_REVIEW = "UserTask_OfficerReview";
+    private static final String TASK_DEFINITION_DISBURSE_FUNDS = "UserTask_DisburseFunds";
+
+    // Camunda EXTERNAL TASK topic (camunda:type="external" di BPMN) - BEDA namespace dari
+    // TASK_DEFINITION_* di atas (User Task) meskipun sama-sama "identitas node BPMN" -
+    // lihat completeExternalTask() vs completeUserTask().
+    private static final String EXTERNAL_TASK_TOPIC_DOCUMENT_VERIFICATION = "document-verification";
+    private static final String EXTERNAL_TASK_TOPIC_RUN_SCORING = "run-scoring";
 
     private final LoanApplicationService loanApplicationService;
-    private final LoanApplicationRepository loanApplicationRepository;
+    private final ScoringService scoringService;
+    private final LoanApplicationPersist loanApplicationPersist;
     private final LoanApplicationStatusService loanApplicationStatusService;
     private final WorkflowEngineClient workflowEngineClient;
     private final TransactionTemplate transactionTemplate;
@@ -100,7 +120,7 @@ public class LoanApplicationWorkflowService {
             LoanApplication loanApplication = loanApplicationService.getById(loanApplicationId);
             loanApplicationStatusService.changeStatus(loanApplication, LoanStatus.SUBMITTED, null);
             loanApplication.setSubmittedAt(Instant.now());
-            return loanApplicationRepository.save(loanApplication);
+            return loanApplicationPersist.save(loanApplication);
         });
 
         // Di luar transaksi manapun - lihat Javadoc class ini soal kenapa HTTP call ke
@@ -108,6 +128,56 @@ public class LoanApplicationWorkflowService {
         startProcess(saved);
 
         return saved;
+    }
+
+
+    /**
+     * Tandai verifikasi dokumen selesai. Fase 1 REUSE {@link LoanApplicationService#moveToDocumentVerification}
+     * apa adanya (bukan inline {@link TransactionTemplate} seperti {@link #submit}/
+     * {@link #review}/{@link #disburse}) - manggilnya lewat bean LAIN (bukan
+     * self-invocation di class ini), jadi proxy {@code @Transactional} method itu beneran
+     * berlaku dan commit duluan sebelum Fase 2 di bawah jalan, tanpa perlu duplikasi
+     * boilerplate transaksi.
+     * <p>
+     * Node "Verifikasi Dokumen" di BPMN adalah Camunda EXTERNAL TASK
+     * ({@code camunda:type="external"}, topic {@code "document-verification"}) - BEDA
+     * dari User Task "Officer Review"/"Disburse Funds" ({@link #completeUserTask}), makanya
+     * Fase 2 lewat {@link #completeExternalTask} yang fetch+lock+complete external task
+     * secara sinkron di WORKFLOW-APP, bukan {@link WorkflowEngineClient#completeTask}.
+     */
+    public LoanApplication moveToDocumentVerification(Long loanApplicationId) {
+        LoanApplication saved = loanApplicationService.moveToDocumentVerification(loanApplicationId);
+
+        completeExternalTask(saved, EXTERNAL_TASK_TOPIC_DOCUMENT_VERIFICATION, Map.of());
+
+        return saved;
+    }
+
+    /**
+     * Jalankan scoring, lalu selesaikan Camunda EXTERNAL TASK topic {@code "run-scoring"}
+     * di WORKFLOW-APP - kirim variable {@code decision} (nilai {@link ScoringDecision})
+     * supaya gateway "Keputusan Scoring?" bisa route: {@code APPROVE} -> LANGSUNG ke User
+     * Task "Disburse Funds" (lihat {@link #disburse}, SKIP Officer Review sama sekali -
+     * ini keputusan final rule engine, TIDAK diubah oleh method ini), {@code REJECT} ->
+     * end event Ditolak, selain itu ({@code MANUAL_REVIEW}, tidak match condition apa pun)
+     * -> jatuh ke default flow gateway, ke User Task "Officer Review" (lihat
+     * {@link #review}). Variable name & mapping ini dikonfirmasi dari XML BPMN yang
+     * dideploy WORKFLOW-APP (gateway {@code Gateway_ScoringDecision}) - JANGAN diubah
+     * tanpa cek ulang XML-nya.
+     * <p>
+     * Fase 1 REUSE {@link ScoringService#score} apa adanya (pola sama seperti
+     * {@link #moveToDocumentVerification} - cross-bean call, proxy {@code @Transactional}
+     * beneran berlaku, commit duluan sebelum Fase 2). {@code loanApplication} di-load ULANG
+     * setelah Fase 1 (bukan reuse instance apa pun) karena {@link ScoringOutcome} tidak
+     * membawa entity-nya.
+     */
+    public ScoringOutcome runScoring(Long loanApplicationId) {
+        ScoringOutcome outcome = scoringService.score(loanApplicationId);
+
+        LoanApplication loanApplication = loanApplicationService.getById(loanApplicationId);
+        completeExternalTask(loanApplication, EXTERNAL_TASK_TOPIC_RUN_SCORING, Map.of("decision", outcome.decision().name()));
+
+        return outcome;
     }
 
     /**
@@ -122,7 +192,7 @@ public class LoanApplicationWorkflowService {
             LoanStatus newStatus = decision == ReviewDecision.APPROVE ? LoanStatus.APPROVED : LoanStatus.REJECTED;
             loanApplicationStatusService.changeStatus(loanApplication, newStatus, null);
             loanApplication.setDecidedAt(Instant.now());
-            return loanApplicationRepository.save(loanApplication);
+            return loanApplicationPersist.save(loanApplication);
         });
 
         completeUserTask(saved, TASK_DEFINITION_OFFICER_REVIEW, Map.of("reviewDecision", decision.name()));
@@ -137,7 +207,7 @@ public class LoanApplicationWorkflowService {
         LoanApplication saved = transactionTemplate.execute(status -> {
             LoanApplication loanApplication = loanApplicationService.getById(loanApplicationId);
             loanApplicationStatusService.changeStatus(loanApplication, LoanStatus.DISBURSED, null);
-            return loanApplicationRepository.save(loanApplication);
+            return loanApplicationPersist.save(loanApplication);
         });
 
         completeUserTask(saved, TASK_DEFINITION_DISBURSE_FUNDS, Map.of());
@@ -163,17 +233,27 @@ public class LoanApplicationWorkflowService {
      */
     private void startProcess(LoanApplication loanApplication) {
         Long loanApplicationId = loanApplication.getId();
+
+        CreateLoanApplicationCommand payload = new CreateLoanApplicationCommand(
+                loanApplication.getApplicant().getId(),
+                loanApplication.getLoanAmountRequested(),
+                loanApplication.getLoanTenorMonths(),
+                loanApplication.getPurpose(),
+                loanApplication.getMonthlyIncome(),
+                loanApplication.getMonthlyDebtObligation()
+        );
+
         String businessKey = businessKeyOf(loanApplicationId);
         String correlationId = "los-lite-submit-" + loanApplicationId;
 
-        WorkflowTriggerResult result = workflowEngineClient.startProcess(businessKey, correlationId, Map.of("loanApplicationId", loanApplicationId));
+        WorkflowTriggerResult result = workflowEngineClient.startProcess(businessKey, correlationId, Map.of("loanApplicationId", payload));
 
         transactionTemplate.executeWithoutResult(status -> {
             LoanApplication managed = loanApplicationService.getById(loanApplicationId);
             managed.setWorkflowTriggerId(result.triggerId());
             managed.setWorkflowProcessInstanceId(result.camundaProcessInstanceId());
             managed.setWorkflowStatus(result.status());
-            loanApplicationRepository.save(managed);
+            loanApplicationPersist.save(managed);
         });
 
         if (result.triggerId() == null) {
@@ -211,5 +291,23 @@ public class LoanApplicationWorkflowService {
         }
 
         workflowEngineClient.completeTask(task.get().id(), variables);
+    }
+
+    /**
+     * Fase 2 dari {@link #moveToDocumentVerification}: selesaikan Camunda EXTERNAL TASK
+     * terkait di WORKFLOW-APP, tanpa transaksi terbuka - lihat Javadoc class ini. Guard
+     * {@code workflowTriggerId} sama persis seperti {@link #completeUserTask}: kalau
+     * trigger business process belum pernah tercatat, tidak ada gunanya panggil
+     * WORKFLOW-APP sama sekali (juga mencegah salah satu dari beberapa penyebab 404 yang
+     * digabung jadi satu errorCode di endpoint WORKFLOW-APP - lihat javadoc
+     * {@link WorkflowEngineClient#completeExternalTask}).
+     */
+    private void completeExternalTask(LoanApplication loanApplication, String topic, Map<String, Object> variables) {
+        if (loanApplication.getWorkflowTriggerId() == null) {
+            return;
+        }
+
+        String businessKey = businessKeyOf(loanApplication.getId());
+        workflowEngineClient.completeExternalTask(businessKey, topic, variables);
     }
 }

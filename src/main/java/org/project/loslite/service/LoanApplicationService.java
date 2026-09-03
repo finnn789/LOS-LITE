@@ -5,8 +5,8 @@ import org.project.loslite.dto.CreateLoanApplicationCommand;
 import org.project.loslite.enums.LoanStatus;
 import org.project.loslite.model.Applicant;
 import org.project.loslite.model.LoanApplication;
-import org.project.loslite.repository.ApplicantRepository;
-import org.project.loslite.repository.LoanApplicationRepository;
+import org.project.loslite.persist.ApplicantPersist;
+import org.project.loslite.persist.LoanApplicationPersist;
 import org.project.loslite.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,13 +24,13 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class LoanApplicationService {
 
-    private final LoanApplicationRepository loanApplicationRepository;
-    private final ApplicantRepository applicantRepository;
+    private final LoanApplicationPersist loanApplicationPersist;
+    private final ApplicantPersist applicantPersist;
     private final LoanApplicationStatusService loanApplicationStatusService;
 
     @Transactional
     public LoanApplication create(CreateLoanApplicationCommand command) {
-        Applicant applicant = applicantRepository.findById(command.applicantId())
+        Applicant applicant = applicantPersist.findById(command.applicantId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Applicant dengan id " + command.applicantId() + " tidak ditemukan"));
 
@@ -45,12 +45,12 @@ public class LoanApplicationService {
                 .monthlyDebtObligation(command.monthlyDebtObligation())
                 .build();
 
-        return loanApplicationRepository.save(loanApplication);
+        return loanApplicationPersist.save(loanApplication);
     }
 
     @Transactional(readOnly = true)
     public LoanApplication getById(Long id) {
-        return loanApplicationRepository.findById(id)
+        return loanApplicationPersist.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "LoanApplication dengan id " + id + " tidak ditemukan"));
     }

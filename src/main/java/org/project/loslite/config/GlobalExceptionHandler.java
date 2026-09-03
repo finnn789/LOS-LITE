@@ -28,11 +28,8 @@ public class GlobalExceptionHandler {
 
     // --- Body request tidak lolos validasi @Valid (mis. @NotBlank kosong) ---
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException ex,
-                                                                HttpServletRequest request) {
-        var fieldErrors = ex.getBindingResult().getFieldErrors().stream()
-                .map(fe -> new ApiResponse.FieldErrorDetail(fe.getField(), fe.getDefaultMessage()))
-                .collect(Collectors.toList());
+    public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
+        var fieldErrors = ex.getBindingResult().getFieldErrors().stream().map(fe -> new ApiResponse.FieldErrorDetail(fe.getField(), fe.getDefaultMessage())).collect(Collectors.toList());
 
         var body = ApiResponse.<Void>validationError("Satu atau lebih field tidak valid", fieldErrors);
         return ResponseEntity.badRequest().body(body);
@@ -40,79 +37,69 @@ public class GlobalExceptionHandler {
 
     // --- Validasi path/query param (@Validated) ---
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException ex,
-                                                                        HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request) {
         var body = ApiResponse.<Void>error(ex.getMessage());
         return ResponseEntity.badRequest().body(body);
     }
 
     // --- Body JSON malformed / tidak bisa di-parse ---
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUnreadable(HttpMessageNotReadableException ex,
-                                                                HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleUnreadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
         var body = ApiResponse.<Void>error("Request body tidak valid atau tidak bisa dibaca");
         return ResponseEntity.badRequest().body(body);
     }
 
     // --- Data tidak ditemukan (dilempar Spring Data, mis. Optional.orElseThrow bawaan) ---
     @ExceptionHandler(NoSuchElementException.class)
-    public ResponseEntity<ApiResponse<Void>> handleNotFound(NoSuchElementException ex,
-                                                              HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleNotFound(NoSuchElementException ex, HttpServletRequest request) {
         var body = ApiResponse.<Void>error(ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
     // --- Resource custom kita sendiri tidak ketemu (dilempar manual di application layer) ---
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(ResourceNotFoundException ex,
-                                                                      HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
         var body = ApiResponse.<Void>error(ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
     // --- Duplikat data yang kita cek sendiri di application layer (mis. username sudah dipakai) ---
     @ExceptionHandler(DuplicateResourceException.class)
-    public ResponseEntity<ApiResponse<Void>> handleDuplicateResource(DuplicateResourceException ex,
-                                                                       HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleDuplicateResource(DuplicateResourceException ex, HttpServletRequest request) {
         var body = ApiResponse.<Void>error(ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     // --- Validasi manual di service (bukan lewat @Valid), mis. cek ukuran/tipe file upload ---
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex,
-                                                                      HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
         var body = ApiResponse.<Void>error(ex.getMessage());
         return ResponseEntity.badRequest().body(body);
     }
 
     // --- Percobaan pindah LoanStatus yang melanggar state machine (mis. DRAFT -> DISBURSED) ---
     @ExceptionHandler(InvalidLoanStatusTransitionException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInvalidStatusTransition(InvalidLoanStatusTransitionException ex,
-                                                                             HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleInvalidStatusTransition(InvalidLoanStatusTransitionException ex, HttpServletRequest request) {
         var body = ApiResponse.<Void>error(ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     // --- Pelanggaran constraint DB (misal unique key) ---
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex,
-                                                                   HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
         var body = ApiResponse.<Void>error("Data melanggar constraint (kemungkinan duplikat)");
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     // --- Autentikasi & otorisasi (Spring Security) ---
     @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAuthentication(AuthenticationException ex,
-                                                                    HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleAuthentication(AuthenticationException ex, HttpServletRequest request) {
         var body = ApiResponse.<Void>error(ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex,
-                                                                  HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         var body = ApiResponse.<Void>error("Anda tidak punya akses untuk resource ini");
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
