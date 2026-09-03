@@ -25,3 +25,9 @@ workflow-app:
 jwt:
   secret: ${JWT_SECRET:dev-only-secret-key-jangan-dipakai-di-production-ganti-ini}
   expiration-ms: ${JWT_EXPIRATION_MS:3600000} # 1 jam
+# Secret buat verifikasi token dari Auto-Layout (X-Service-Token), TERPISAH dari jwt.secret
+# di atas (yang buat sesi login user) - harus identik dengan LOS_LITE_JWT_SECRET yang dipakai
+# Auto-Layout pas generate token (lihat GenerateLosLiteServiceToken.java di project itu).
+autolayout:
+  service:
+    jwt-secret: ${AUTOLAYOUT_SERVICE_JWT_SECRET:dev-only-secret-buat-service-token-ke-los-lite-ganti-ini}
