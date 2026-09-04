@@ -1,6 +1,7 @@
 package org.project.loslite.config;
 
 import lombok.RequiredArgsConstructor;
+import org.project.loslite.component.AutoLayoutServiceTokenFilter;
 import org.project.loslite.component.JwtAuthenticationFilter;
 import org.project.loslite.component.RestAccessDeniedHandler;
 import org.project.loslite.component.RestAuthenticationEntryPoint;
@@ -37,6 +38,7 @@ public class SecurityConfig {
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final AutoLayoutServiceTokenFilter autoLayoutServiceTokenFilter;
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
     private final RestAccessDeniedHandler restAccessDeniedHandler;
 
@@ -90,6 +92,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_PATHS).permitAll()
+                        .requestMatchers("/api/los/endpoints/**").hasAuthority("ROLE_SCHEMA_READ")
                         .anyRequest().authenticated()
                 )
                 // Penolakan dari FilterChain (belum login / role salah) terjadi SEBELUM
@@ -100,6 +103,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(restAccessDeniedHandler)
                 );
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(autoLayoutServiceTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
