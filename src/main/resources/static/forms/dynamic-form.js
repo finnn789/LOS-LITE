@@ -60,6 +60,13 @@
         skeleton: document.getElementById("skeleton"),
         form: document.getElementById("dynamicForm"),
         meta: document.getElementById("metaInfo"),
+        container: document.querySelector(".container"),
+        // Dipakai kalau schema.button.method GET (lihat renderDataTable) - form di atas
+        // ("dynamicForm") dipakai kalau bukan GET, dua-duanya tidak pernah tampil bareng.
+        tableWrap: document.getElementById("dynamicTableWrap"),
+        tableHead: document.getElementById("dynamicTableHead"),
+        tableBody: document.getElementById("dynamicTableBody"),
+        refreshBtn: document.getElementById("refreshTableBtn"),
     };
 
     function showBanner(kind, message) {
@@ -150,22 +157,75 @@
         label.appendChild(mark);
     }
 
-    function renderForm(schema, formKey) {
-        els.title.textContent = formKey || "Form";
-        els.subtitle.textContent = "Isi data di bawah ini";
+    // Gabungkan definisi tombol/aksi (dua bentuk schema Auto Layout yang pernah
+    // dipakai) jadi {url, method} siap-fetch:
+    // 1) LAMA: field bertipe "button" di dalam fields[], "url" di dalamnya SUDAH
+    //    absolut - dipakai apa adanya.
+    // 2) BARU: schema.button top-level {path, label, method}, "path" di dalamnya
+    //    RELATIF (mis. "/loan-applications") - wajib digabung dulu dengan
+    //    LosLiteConfig.baseUrl (lihat los-lite-config.js), karena ini endpoint bisnis
+    //    LOS-LITE sendiri, bukan Auto Layout.
+    // defaultMethod dipakai kalau schema tidak menyebut "method" sama sekali - "POST"
+    // untuk form input (schema.type "FORM"), "GET" untuk tabel data (schema.type
+    // "DATATABLE"), method APAPUN yang schema kasih tetap dihormati apa adanya.
+    function resolveSubmitTarget(submitDef, defaultMethod) {
+        if (!submitDef) return null;
+        if (submitDef.url) {
+            return { url: submitDef.url, method: (submitDef.method || defaultMethod).toUpperCase() };
+        }
+        if (submitDef.path) {
+            const base = (window.LosLiteConfig && window.LosLiteConfig.baseUrl) || "";
+            return { url: base + submitDef.path, method: (submitDef.method || defaultMethod).toUpperCase() };
+        }
+        return null;
+    }
 
+    // Router utama: schema.type "DATATABLE" (dari API Auto Layout, mis. form "table
+    // loan") ditampilkan sebagai TABEL data, di-fetch dari button.path/url dengan
+    // method sesuai schema (default GET kalau tidak disebut). Selain itu (schema.type
+    // "FORM") tetap dirender sebagai form input seperti biasa - method GET pada
+    // button-nya TIDAK lagi jadi penentu di sini, cuma schema.type yang menentukan.
+    function renderForm(schema, formKey) {
         const fields = (schema && schema.fields) || [];
-        const inputFields = [];
-        let submitField = null;
+        const nonButtonFields = [];
+        // submitField bentuk BARU (schema.button top-level) dipakai duluan; field
+        // bertipe "button" di dalam fields[] (bentuk LAMA) menimpanya kalau ada,
+        // supaya form lama tetap jalan seperti sebelumnya.
+        let submitField = (schema && schema.button) || null;
 
         fields.forEach(function (field) {
             if (field.type === "button") {
-                // Field bertipe "button" bukan input, tapi definisi tombol submit -
-                // "url" di dalamnya dipakai apa adanya sebagai tujuan POST.
                 submitField = field;
                 return;
             }
-            inputFields.push(field);
+            nonButtonFields.push(field);
+        });
+
+        const schemaType = schema && typeof schema.type === "string" ? schema.type.toUpperCase() : "";
+        const isDataTable = schemaType === "DATATABLE";
+        const target = resolveSubmitTarget(submitField, isDataTable ? "GET" : "POST");
+
+        if (isDataTable) {
+            renderDataTable(formKey, nonButtonFields, target);
+            return;
+        }
+
+        renderInputForm(schema, formKey, nonButtonFields, submitField, target);
+    }
+
+    function renderInputForm(schema, formKey, inputFields, submitField, target) {
+        els.title.textContent = formKey || "Form";
+        els.subtitle.textContent = "Isi data di bawah ini";
+
+        // Layout 2 kolom (schema.layout === "two-column") - lihat .layout-two-column
+        // di forms.css. Container digantikan "wide" juga supaya kolomnya tidak sesak
+        // di dalam .container yang defaultnya cuma 560px.
+        if (schema && schema.layout === "two-column") {
+            els.form.classList.add("layout-two-column");
+            if (els.container) els.container.classList.add("wide");
+        }
+
+        inputFields.forEach(function (field) {
             els.form.appendChild(buildField(field));
         });
 
@@ -176,18 +236,18 @@
 
         els.form.addEventListener("submit", function (e) {
             e.preventDefault();
-            handleSubmit(inputFields, submitField, submitBtn);
+            handleSubmit(inputFields, target, submitField, submitBtn);
         });
 
         els.skeleton.style.display = "none";
         els.form.style.display = "block";
     }
 
-    function handleSubmit(inputFields, submitField, submitBtn) {
+    function handleSubmit(inputFields, target, submitField, submitBtn) {
         hideBanner();
 
-        if (!submitField || !submitField.url) {
-            showBanner("error", "Form ini tidak punya tujuan submit (field button tanpa url).");
+        if (!target) {
+            showBanner("error", "Form ini tidak punya tujuan submit (button tanpa url/path).");
             return;
         }
 
@@ -213,8 +273,8 @@
             headers["Authorization"] = "Bearer " + storedToken;
         }
 
-        fetch(submitField.url, {
-            method: "POST",
+        fetch(target.url, {
+            method: target.method,
             headers: headers,
             body: JSON.stringify(payload),
         })
@@ -248,6 +308,128 @@
                 submitBtn.textContent = (submitField && submitField.label) || "Kirim";
             });
     }
+
+    // Kolom & target GET dari tabel yang lagi ditampilkan - disimpan di sini supaya
+    // tombol "Muat Ulang" bisa fetch ulang tanpa perlu parse schema lagi.
+    let currentTableColumns = null;
+    let currentTableTarget = null;
+
+    function formatCellValue(value) {
+        if (value === null || value === undefined || value === "") return "-";
+        if (typeof value === "boolean") return value ? "Ya" : "Tidak";
+        if (typeof value === "object") {
+            try {
+                return JSON.stringify(value);
+            } catch (e) {
+                return String(value);
+            }
+        }
+        return String(value);
+    }
+
+    function renderTableRows(columns, rows) {
+        els.tableBody.innerHTML = "";
+
+        if (!rows.length) {
+            els.skeleton.textContent = "Belum ada data.";
+            els.skeleton.style.display = "block";
+            return;
+        }
+
+        rows.forEach(function (row) {
+            const tr = document.createElement("tr");
+            columns.forEach(function (field) {
+                const td = document.createElement("td");
+                td.textContent = formatCellValue(row ? row[field.key] : undefined);
+                tr.appendChild(td);
+            });
+            els.tableBody.appendChild(tr);
+        });
+
+        els.skeleton.style.display = "none";
+    }
+
+    function loadTableData(columns, target) {
+        hideBanner();
+        els.tableBody.innerHTML = "";
+        els.skeleton.textContent = "Mengambil data…";
+        els.skeleton.style.display = "block";
+
+        const headers = {};
+        const storedToken = getStoredLosLiteToken();
+        if (storedToken) {
+            // Sama seperti submit form biasa - token login LOS-LITE (lihat
+            // LOS_LITE_TOKEN_KEY) dikirim ke endpoint ini kalau ada.
+            headers["Authorization"] = "Bearer " + storedToken;
+        }
+
+        // Method DIAMBIL dari schema (target.method, lihat resolveSubmitTarget) -
+        // biasanya GET, tapi dihormati apa adanya kalau schema menyebut yang lain.
+        // Tidak pernah kirim body di mode tabel - ini murni fetch untuk MENAMPILKAN
+        // data, bukan submit.
+        fetch(target.url, { method: target.method, headers: headers })
+            .then(function (res) {
+                if (res.status === 401 || res.status === 403) {
+                    throw new Error("Akses ditolak (" + res.status + ") - token LOS-LITE tidak ada/kedaluwarsa, login ulang lewat index.html.");
+                }
+                if (!res.ok) {
+                    throw new Error("Server membalas status " + res.status);
+                }
+                return res.json();
+            })
+            .then(function (body) {
+                // Bentuk response bisa array langsung, dibungkus ApiResponse LOS-LITE
+                // ({success,message,data:[...]}), atau satu object tunggal (dianggap 1 baris).
+                let rows;
+                if (Array.isArray(body)) {
+                    rows = body;
+                } else if (body && Array.isArray(body.data)) {
+                    rows = body.data;
+                } else if (body && typeof body === "object") {
+                    rows = [body];
+                } else {
+                    rows = [];
+                }
+                renderTableRows(columns, rows);
+            })
+            .catch(function (err) {
+                els.skeleton.style.display = "none";
+                showBanner("error", "Gagal mengambil data: " + err.message);
+            });
+    }
+
+    function renderDataTable(formKey, columns, target) {
+        els.title.textContent = formKey || "Data";
+        els.subtitle.textContent = "Data dari server";
+        if (els.container) els.container.classList.add("wide");
+
+        if (!target) {
+            els.skeleton.style.display = "none";
+            showBanner("error", "Form tabel ini tidak punya sumber data (button tanpa url/path).");
+            return;
+        }
+
+        els.tableHead.innerHTML = "";
+        columns.forEach(function (field) {
+            const th = document.createElement("th");
+            th.textContent = field.label || field.key;
+            els.tableHead.appendChild(th);
+        });
+
+        currentTableColumns = columns;
+        currentTableTarget = target;
+
+        els.refreshBtn.style.display = "inline-block";
+        els.tableWrap.style.display = "block";
+
+        loadTableData(columns, target);
+    }
+
+    els.refreshBtn.addEventListener("click", function () {
+        if (currentTableColumns && currentTableTarget) {
+            loadTableData(currentTableColumns, currentTableTarget);
+        }
+    });
 
     function loadSchema() {
         const url = AUTO_LAYOUT_BASE_URL + "/forms/" + encodeURIComponent(formId);

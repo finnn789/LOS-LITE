@@ -62,6 +62,17 @@ body {
 }
 .back-link:hover { text-decoration: underline; }
 
+/* --- Bar sesi login (index.html, di atas judul Daftar Form) --- */
+.session-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.session-bar .back-link { margin-bottom: 0; }
+
 .field {
     margin-bottom: 18px;
 }
@@ -106,6 +117,23 @@ body {
 }
 .field-checkbox input { width: auto; }
 .field-checkbox label { margin: 0; }
+
+/* Layout 2 kolom (schema.layout === "two-column" dari Auto Layout) - lihat
+   dynamic-form.js. Tombol submit sengaja span penuh (grid-column: 1 / -1) supaya
+   tidak ikut kesempit di salah satu kolom. */
+form.layout-two-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 16px;
+}
+form.layout-two-column button[type="submit"] {
+    grid-column: 1 / -1;
+}
+@media (max-width: 520px) {
+    form.layout-two-column {
+        grid-template-columns: 1fr;
+    }
+}
 
 button[type="submit"] {
     width: 100%;
@@ -200,3 +228,13 @@ table.forms-table tbody tr:hover {
     text-decoration: none;
 }
 .btn-open:hover { background: var(--primary-hover); }
+
+/* .btn-open awalnya cuma dipakai di <a> (link "Isi Form") - dipakai ulang di
+   <button id="refreshTableBtn"> (dynamic-form.js, mode tabel data GET), jadi reset
+   gaya default <button> di sini supaya tetap konsisten. */
+button.btn-open {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    margin-bottom: 12px;
+}
