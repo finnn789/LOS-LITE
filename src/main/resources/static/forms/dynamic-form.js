@@ -67,6 +67,13 @@
         tableHead: document.getElementById("dynamicTableHead"),
         tableBody: document.getElementById("dynamicTableBody"),
         refreshBtn: document.getElementById("refreshTableBtn"),
+        // Modal "Detail" / "Update" per baris - lihat openDetailModal/openUpdateModal.
+        rowModalOverlay: document.getElementById("rowModalOverlay"),
+        rowModalTitle: document.getElementById("rowModalTitle"),
+        rowModalBanner: document.getElementById("rowModalBanner"),
+        rowModalBody: document.getElementById("rowModalBody"),
+        rowModalCloseBtn: document.getElementById("rowModalCloseBtn"),
+        rowModalSaveBtn: document.getElementById("rowModalSaveBtn"),
     };
 
     function showBanner(kind, message) {
@@ -345,11 +352,235 @@
                 td.textContent = formatCellValue(row ? row[field.key] : undefined);
                 tr.appendChild(td);
             });
+
+            // Kolom aksi - "Detail" ambil SEMUA field respons (bukan cuma kolom yang
+            // ditampilkan, mis. NIK yang sengaja tidak disertakan di list summary),
+            // "Update" ambil data lengkap yang sama lalu tampilkan sebagai form edit.
+            // Dua-duanya butuh row.id, jadi tidak ada aksi kalau baris tidak punya id.
+            const tdAction = document.createElement("td");
+            if (row && row.id !== undefined && row.id !== null) {
+                const wrap = document.createElement("div");
+                wrap.className = "row-actions";
+
+                const detailBtn = document.createElement("button");
+                detailBtn.type = "button";
+                detailBtn.className = "btn-row-action";
+                detailBtn.textContent = "Detail";
+                detailBtn.addEventListener("click", function () {
+                    openDetailModal(row.id);
+                });
+
+                const updateBtn = document.createElement("button");
+                updateBtn.type = "button";
+                updateBtn.className = "btn-row-action primary";
+                updateBtn.textContent = "Update";
+                updateBtn.addEventListener("click", function () {
+                    openUpdateModal(row.id);
+                });
+
+                wrap.appendChild(detailBtn);
+                wrap.appendChild(updateBtn);
+                tdAction.appendChild(wrap);
+            }
+            tr.appendChild(tdAction);
+
             els.tableBody.appendChild(tr);
         });
 
         els.skeleton.style.display = "none";
     }
+
+    // Endpoint detail/update per baris NGIKUTIN KONVENSI REST "{endpoint list}/{id}"
+    // (mis. sumber tabel /applicants -> detail & update di /applicants/{id}) - sama
+    // seperti pola /applicants/{id} dan /loan-applications/{id} yang sudah ada di
+    // discovery endpoint LOS-LITE. Tidak ada info terpisah di schema Auto Layout
+    // buat ini, jadi konvensi ini SATU-SATUNYA cara dynamic-form.js tahu ke mana
+    // harus manggil - kalau resource sumbernya tidak punya endpoint /{id}, tombol
+    // Detail/Update di baris itu bakal gagal fetch (ditangani lewat banner error).
+    function buildRowUrl(id) {
+        return currentTableTarget.url + "/" + encodeURIComponent(id);
+    }
+
+    function rowAuthHeaders() {
+        const headers = {};
+        const storedToken = getStoredLosLiteToken();
+        if (storedToken) headers["Authorization"] = "Bearer " + storedToken;
+        return headers;
+    }
+
+    // Sama seperti normalisasi bentuk response di loadTableData, tapi buat SATU
+    // object (bukan array) - endpoint detail LOS-LITE selalu balikin
+    // {success,message,data:{...}}, tapi ditulis toleran kalau nanti ada endpoint
+    // lain yang balikin object langsung tanpa amplop.
+    function extractSingleRecord(body) {
+        if (body && typeof body === "object" && body.data && typeof body.data === "object" && !Array.isArray(body.data)) {
+            return body.data;
+        }
+        return body;
+    }
+
+    function closeRowModal() {
+        els.rowModalOverlay.classList.remove("show");
+        els.rowModalBody.innerHTML = "";
+        els.rowModalBanner.className = "banner";
+        els.rowModalSaveBtn.style.display = "none";
+        els.rowModalSaveBtn.onclick = null;
+    }
+
+    function showRowModalError(message) {
+        els.rowModalBanner.className = "banner show error";
+        els.rowModalBanner.textContent = message;
+    }
+
+    // "Detail" murni baca - nampilin SEMUA pasangan key-value dari respons apa
+    // adanya (dl/dt/dd), termasuk field yang sengaja tidak ada di kolom tabel.
+    function openDetailModal(id) {
+        els.rowModalTitle.textContent = "Detail Data #" + id;
+        els.rowModalBody.innerHTML = "<div class=\"skeleton\">Mengambil data…</div>";
+        els.rowModalSaveBtn.style.display = "none";
+        els.rowModalOverlay.classList.add("show");
+
+        fetch(buildRowUrl(id), { headers: rowAuthHeaders() })
+            .then(function (res) {
+                if (res.status === 401 || res.status === 403) {
+                    throw new Error("Akses ditolak (" + res.status + ") - login ulang lewat index.html.");
+                }
+                if (!res.ok) throw new Error("Server membalas status " + res.status);
+                return res.json();
+            })
+            .then(function (body) {
+                const record = extractSingleRecord(body);
+                const dl = document.createElement("dl");
+                dl.className = "detail-list";
+                Object.keys(record || {}).forEach(function (key) {
+                    const dt = document.createElement("dt");
+                    dt.textContent = key;
+                    const dd = document.createElement("dd");
+                    dd.textContent = formatCellValue(record[key]);
+                    dl.appendChild(dt);
+                    dl.appendChild(dd);
+                });
+                els.rowModalBody.innerHTML = "";
+                els.rowModalBody.appendChild(dl);
+            })
+            .catch(function (err) {
+                els.rowModalBody.innerHTML = "";
+                showRowModalError("Gagal mengambil detail: " + err.message);
+            });
+    }
+
+    // Tebak tipe <input> dari NILAI yang sekarang (bukan dari schema - endpoint
+    // detail tidak bawa metadata tipe field), biar minimal tanggal & angka dapat
+    // input yang sesuai, sisanya fallback ke text.
+    function guessInputType(value) {
+        if (typeof value === "number") return "number";
+        if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return "date";
+        return "text";
+    }
+
+    // "Update" ambil data lengkap yang sama seperti Detail, tapi dirender sebagai
+    // form edit (satu <input> per key, kecuali "id" - itu identitas baris, bukan
+    // sesuatu yang diedit). Submit PUT ke endpoint yang sama, body-nya field-field
+    // ini apa adanya (lihat submitRowUpdate).
+    function openUpdateModal(id) {
+        els.rowModalTitle.textContent = "Update Data #" + id;
+        els.rowModalBody.innerHTML = "<div class=\"skeleton\">Mengambil data…</div>";
+        els.rowModalSaveBtn.style.display = "none";
+        els.rowModalOverlay.classList.add("show");
+
+        fetch(buildRowUrl(id), { headers: rowAuthHeaders() })
+            .then(function (res) {
+                if (res.status === 401 || res.status === 403) {
+                    throw new Error("Akses ditolak (" + res.status + ") - login ulang lewat index.html.");
+                }
+                if (!res.ok) throw new Error("Server membalas status " + res.status);
+                return res.json();
+            })
+            .then(function (body) {
+                const record = extractSingleRecord(body) || {};
+                const form = document.createElement("div");
+
+                Object.keys(record).forEach(function (key) {
+                    if (key === "id") return;
+
+                    const field = document.createElement("div");
+                    field.className = "field";
+
+                    const label = document.createElement("label");
+                    label.htmlFor = "rowField_" + key;
+                    label.textContent = key;
+                    field.appendChild(label);
+
+                    const value = record[key];
+                    const input = document.createElement("input");
+                    input.id = "rowField_" + key;
+                    input.name = key;
+                    input.type = guessInputType(value);
+                    input.value = value === null || value === undefined ? "" : value;
+                    field.appendChild(input);
+
+                    form.appendChild(field);
+                });
+
+                els.rowModalBody.innerHTML = "";
+                els.rowModalBody.appendChild(form);
+                els.rowModalSaveBtn.style.display = "inline-block";
+                els.rowModalSaveBtn.onclick = function () {
+                    submitRowUpdate(id, Object.keys(record).filter(function (k) { return k !== "id"; }));
+                };
+            })
+            .catch(function (err) {
+                els.rowModalBody.innerHTML = "";
+                showRowModalError("Gagal mengambil data: " + err.message);
+            });
+    }
+
+    function submitRowUpdate(id, keys) {
+        const payload = {};
+        keys.forEach(function (key) {
+            const input = document.getElementById("rowField_" + key);
+            if (!input) return;
+            payload[key] = input.type === "number" && input.value !== "" ? Number(input.value) : input.value;
+        });
+
+        els.rowModalSaveBtn.disabled = true;
+        els.rowModalSaveBtn.textContent = "Menyimpan…";
+
+        fetch(buildRowUrl(id), {
+            method: "PUT",
+            headers: Object.assign({ "Content-Type": "application/json" }, rowAuthHeaders()),
+            body: JSON.stringify(payload),
+        })
+            .then(function (res) {
+                return res.text().then(function (text) {
+                    let body = null;
+                    try { body = text ? JSON.parse(text) : null; } catch (e) { /* bukan JSON, abaikan */ }
+                    if (!res.ok) {
+                        const msg = (body && body.message) || "Server membalas status " + res.status;
+                        throw new Error(msg);
+                    }
+                });
+            })
+            .then(function () {
+                closeRowModal();
+                showBanner("success", "Data #" + id + " berhasil diperbarui.");
+                if (currentTableColumns && currentTableTarget) {
+                    loadTableData(currentTableColumns, currentTableTarget);
+                }
+            })
+            .catch(function (err) {
+                showRowModalError("Gagal menyimpan: " + err.message);
+            })
+            .finally(function () {
+                els.rowModalSaveBtn.disabled = false;
+                els.rowModalSaveBtn.textContent = "Simpan";
+            });
+    }
+
+    els.rowModalCloseBtn.addEventListener("click", closeRowModal);
+    els.rowModalOverlay.addEventListener("click", function (e) {
+        if (e.target === els.rowModalOverlay) closeRowModal();
+    });
 
     function loadTableData(columns, target) {
         hideBanner();
@@ -417,6 +648,9 @@
             th.textContent = field.label || field.key;
             els.tableHead.appendChild(th);
         });
+        const actionTh = document.createElement("th");
+        actionTh.textContent = "Aksi";
+        els.tableHead.appendChild(actionTh);
 
         currentTableColumns = columns;
         currentTableTarget = target;

@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.project.loslite.dto.CreateLoanApplicationCommand;
 import org.project.loslite.dto.ReviewLoanApplicationRequest;
+import org.project.loslite.dto.UpdateLoanApplicationCommand;
+import org.project.loslite.dto.UpdateLoanApplicationRequest;
 import org.project.loslite.service.LoanApplicationService;
 import org.project.loslite.model.LoanApplication;
 import org.project.loslite.service.ScoringOutcome;
@@ -57,6 +59,25 @@ public class LoanApplicationController {
     public ResponseEntity<ApiResponse<LoanApplicationResponse>> getById(@PathVariable Long id) {
         LoanApplication loanApplication = loanApplicationService.getById(id);
         return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil data pengajuan", toResponse(loanApplication)));
+    }
+
+    // Cuma field bisnis (jumlah/tenor/tujuan/penghasilan/utang) - lihat javadoc
+    // UpdateLoanApplicationRequest kenapa applicantId & status TIDAK ada di sini.
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<LoanApplicationResponse>> update(
+            @PathVariable Long id, @Valid @RequestBody UpdateLoanApplicationRequest request) {
+
+        UpdateLoanApplicationCommand command = new UpdateLoanApplicationCommand(
+                id,
+                request.loanAmountRequested(),
+                request.loanTenorMonths(),
+                request.purpose(),
+                request.monthlyIncome(),
+                request.monthlyDebtObligation()
+        );
+
+        LoanApplication updated = loanApplicationService.update(command);
+        return ResponseEntity.ok(ApiResponse.success("Pengajuan berhasil diperbarui", toResponse(updated)));
     }
 
     @PostMapping("/{id}/submit")

@@ -3,6 +3,8 @@ package org.project.loslite.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.project.loslite.dto.CreateApplicantCommand;
+import org.project.loslite.dto.UpdateApplicantCommand;
+import org.project.loslite.dto.UpdateApplicantRequest;
 import org.project.loslite.service.ApplicantService;
 import org.project.loslite.model.Applicant;
 import org.project.loslite.dto.ApiResponse;
@@ -52,6 +54,35 @@ public class ApplicantController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Applicant berhasil didaftarkan", response));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<ApplicantResponse>> update(
+            @PathVariable Long id, @Valid @RequestBody UpdateApplicantRequest request) {
+
+        UpdateApplicantCommand command = new UpdateApplicantCommand(
+                id,
+                request.fullName(),
+                request.nik(),
+                request.dateOfBirth(),
+                request.phoneNumber(),
+                request.email(),
+                request.address()
+        );
+
+        Applicant updated = applicantService.update(command);
+
+        ApplicantResponse response = new ApplicantResponse(
+                updated.getId(),
+                updated.getFullName(),
+                updated.getNik(),
+                updated.getDateOfBirth(),
+                updated.getPhoneNumber(),
+                updated.getEmail(),
+                updated.getAddress()
+        );
+
+        return ResponseEntity.ok(ApiResponse.success("Applicant berhasil diperbarui", response));
     }
 
     @GetMapping("/{id}")

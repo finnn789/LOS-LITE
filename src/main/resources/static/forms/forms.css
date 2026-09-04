@@ -238,3 +238,90 @@ button.btn-open {
     font-family: inherit;
     margin-bottom: 12px;
 }
+
+/* --- Tombol aksi per baris (kolom terakhir tabel data, lihat renderTableRows) --- */
+.row-actions {
+    display: flex;
+    gap: 6px;
+    white-space: nowrap;
+}
+.btn-row-action {
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    cursor: pointer;
+    font-family: inherit;
+}
+.btn-row-action:hover { background: #f9fafb; }
+.btn-row-action.primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+.btn-row-action.primary:hover { background: var(--primary-hover); }
+
+/* --- Modal "Detail" / "Update" (lihat rowModalOverlay di dynamic-form.html) --- */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 50;
+}
+.modal-overlay.show { display: flex; }
+.modal-card {
+    width: 100%;
+    max-width: 480px;
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
+}
+.modal-card h2 {
+    font-size: 17px;
+    margin: 0 0 16px;
+}
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 8px;
+}
+.modal-actions .btn-secondary {
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    cursor: pointer;
+    font-family: inherit;
+}
+.modal-actions .btn-secondary:hover { background: #f9fafb; }
+.modal-actions button[type="button"]:not(.btn-secondary) {
+    width: auto;
+    margin-top: 0;
+    padding: 9px 16px;
+}
+
+/* Daftar key-value read-only buat modal Detail */
+.detail-list dt {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin-top: 12px;
+}
+.detail-list dt:first-child { margin-top: 0; }
+.detail-list dd {
+    margin: 2px 0 0;
+    font-size: 14px;
+    word-break: break-word;
+}

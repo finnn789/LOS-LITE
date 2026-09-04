@@ -35,6 +35,20 @@
     <p class="meta" id="metaInfo"></p>
 </div>
 
+<!-- Modal buat tombol "Detail" (baca-saja, semua field respons) dan "Update" (form
+     edit) per baris tabel - lihat openDetailModal/openUpdateModal di dynamic-form.js. -->
+<div class="modal-overlay" id="rowModalOverlay">
+    <div class="card modal-card">
+        <h2 id="rowModalTitle">Detail</h2>
+        <div id="rowModalBanner" class="banner"></div>
+        <div id="rowModalBody"></div>
+        <div class="modal-actions">
+            <button type="button" class="btn-secondary" id="rowModalCloseBtn">Tutup</button>
+            <button type="button" id="rowModalSaveBtn" style="display:none;">Simpan</button>
+        </div>
+    </div>
+</div>
+
 <script src="auto-layout-config.js"></script>
 <script src="los-lite-config.js"></script>
 <script src="dynamic-form.js"></script>

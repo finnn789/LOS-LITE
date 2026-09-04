@@ -2,6 +2,7 @@ package org.project.loslite.service;
 
 import lombok.RequiredArgsConstructor;
 import org.project.loslite.dto.CreateLoanApplicationCommand;
+import org.project.loslite.dto.UpdateLoanApplicationCommand;
 import org.project.loslite.enums.LoanStatus;
 import org.project.loslite.model.Applicant;
 import org.project.loslite.model.LoanApplication;
@@ -44,6 +45,23 @@ public class LoanApplicationService {
                 .monthlyIncome(command.monthlyIncome())
                 .monthlyDebtObligation(command.monthlyDebtObligation())
                 .build();
+
+        return loanApplicationPersist.save(loanApplication);
+    }
+
+    // Cuma field bisnis (jumlah/tenor/tujuan/penghasilan/utang) yang bisa diedit lewat
+    // sini - applicant pemilik dan status tetap tidak tersentuh (lihat javadoc
+    // UpdateLoanApplicationRequest), jadi tidak perlu validasi ulang applicant atau
+    // lewat LoanApplicationStatusService sama sekali.
+    @Transactional
+    public LoanApplication update(UpdateLoanApplicationCommand command) {
+        LoanApplication loanApplication = getById(command.id());
+
+        loanApplication.setLoanAmountRequested(command.loanAmountRequested());
+        loanApplication.setLoanTenorMonths(command.loanTenorMonths());
+        loanApplication.setPurpose(command.purpose());
+        loanApplication.setMonthlyIncome(command.monthlyIncome());
+        loanApplication.setMonthlyDebtObligation(command.monthlyDebtObligation());
 
         return loanApplicationPersist.save(loanApplication);
     }

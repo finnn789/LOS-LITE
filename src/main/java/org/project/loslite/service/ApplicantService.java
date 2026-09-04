@@ -2,6 +2,7 @@ package org.project.loslite.service;
 
 import lombok.RequiredArgsConstructor;
 import org.project.loslite.dto.CreateApplicantCommand;
+import org.project.loslite.dto.UpdateApplicantCommand;
 import org.project.loslite.model.Applicant;
 import org.project.loslite.persist.ApplicantPersist;
 import org.project.loslite.exception.DuplicateResourceException;
@@ -44,6 +45,30 @@ public class ApplicantService {
                 .email(command.email())
                 .address(command.address())
                 .build();
+
+        return applicantPersist.save(applicant);
+    }
+
+    @Transactional
+    public Applicant update(UpdateApplicantCommand command) {
+        Applicant applicant = getById(command.id());
+
+        // NIK cuma dicek ulang duplikatnya kalau beneran berubah dari sebelumnya -
+        // applicant ini sendiri sudah pasti "punya" nik_hash lama itu, jadi kalau NIK
+        // tidak diubah, existsByNikHash pasti true tapi itu bukan duplikat SIAPA PUN,
+        // cuma dirinya sendiri.
+        String nikHash = hashNik(command.nik());
+        if (!nikHash.equals(applicant.getNikHash()) && applicantPersist.existsByNikHash(nikHash)) {
+            throw new DuplicateResourceException("Applicant dengan NIK ini sudah terdaftar");
+        }
+
+        applicant.setFullName(command.fullName());
+        applicant.setNik(command.nik());
+        applicant.setNikHash(nikHash);
+        applicant.setDateOfBirth(command.dateOfBirth());
+        applicant.setPhoneNumber(command.phoneNumber());
+        applicant.setEmail(command.email());
+        applicant.setAddress(command.address());
 
         return applicantPersist.save(applicant);
     }
