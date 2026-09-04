@@ -157,14 +157,14 @@
         label.appendChild(mark);
     }
 
-    // Gabungkan definisi tombol/aksi (dua bentuk schema Auto Layout yang pernah
-    // dipakai) jadi {url, method} siap-fetch:
+    // Gabungkan definisi endpoint (bentuknya beda-beda tergantung dari mana asalnya)
+    // jadi {url, method} siap-fetch:
     // 1) LAMA: field bertipe "button" di dalam fields[], "url" di dalamnya SUDAH
     //    absolut - dipakai apa adanya.
-    // 2) BARU: schema.button top-level {path, label, method}, "path" di dalamnya
-    //    RELATIF (mis. "/loan-applications") - wajib digabung dulu dengan
-    //    LosLiteConfig.baseUrl (lihat los-lite-config.js), karena ini endpoint bisnis
-    //    LOS-LITE sendiri, bukan Auto Layout.
+    // 2) BARU (schema.button, FORM / schema.source, DATATABLE): {path, method, ...}
+    //    top-level, "path" di dalamnya RELATIF (mis. "/loan-applications") - wajib
+    //    digabung dulu dengan LosLiteConfig.baseUrl (lihat los-lite-config.js), karena
+    //    ini endpoint bisnis LOS-LITE sendiri, bukan Auto Layout.
     // defaultMethod dipakai kalau schema tidak menyebut "method" sama sekali - "POST"
     // untuk form input (schema.type "FORM"), "GET" untuk tabel data (schema.type
     // "DATATABLE"), method APAPUN yang schema kasih tetap dihormati apa adanya.
@@ -180,11 +180,12 @@
         return null;
     }
 
-    // Router utama: schema.type "DATATABLE" (dari API Auto Layout, mis. form "table
-    // loan") ditampilkan sebagai TABEL data, di-fetch dari button.path/url dengan
-    // method sesuai schema (default GET kalau tidak disebut). Selain itu (schema.type
-    // "FORM") tetap dirender sebagai form input seperti biasa - method GET pada
-    // button-nya TIDAK lagi jadi penentu di sini, cuma schema.type yang menentukan.
+    // Router utama: schema.type "DATATABLE" ditampilkan sebagai TABEL data, di-fetch
+    // dari schema.source (endpoint sumber yang dipilih saat schema ini digenerate di
+    // Auto Layout - BUKAN schema.button, itu punya arti beda: endpoint create buat
+    // form "Tambah Data" / schema.createForm, dan Auto Layout sengaja tidak mengisi
+    // schema.button untuk Datatable). Selain itu (schema.type "FORM") tetap dirender
+    // sebagai form input seperti biasa, memakai schema.button seperti sebelumnya.
     function renderForm(schema, formKey) {
         const fields = (schema && schema.fields) || [];
         const nonButtonFields = [];
@@ -203,13 +204,14 @@
 
         const schemaType = schema && typeof schema.type === "string" ? schema.type.toUpperCase() : "";
         const isDataTable = schemaType === "DATATABLE";
-        const target = resolveSubmitTarget(submitField, isDataTable ? "GET" : "POST");
 
         if (isDataTable) {
+            const target = resolveSubmitTarget(schema && schema.source, "GET");
             renderDataTable(formKey, nonButtonFields, target);
             return;
         }
 
+        const target = resolveSubmitTarget(submitField, "POST");
         renderInputForm(schema, formKey, nonButtonFields, submitField, target);
     }
 

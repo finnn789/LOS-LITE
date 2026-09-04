@@ -8,7 +8,9 @@
 // dipublish untuk diisi publik/nasabah langsung, token role SERVICE ini WAJIB
 // dipindah ke backend (proxy server-side), tidak boleh tetap di file client-side ini.
 window.AutoLayoutConfig = {
-    baseUrl: "http://25.21.167.25:8082",
+    // Auto Layout pindah dari 8082 ke 8083 - 8082 sekarang dipakai LOS-LITE sendiri
+    // (lihat komentar port di application.yml LOS-LITE).
+    baseUrl: "http://25.21.167.25:8083",
     bearerToken:
         "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJsb3MtbGl0ZS1zZXJ2aWNlIiwicm9sZSI6IlNFUlZJQ0UifQ.sdjmMfnzU-vjDkuq94JIrbBvxrc8u8hAqeuPUkdVTatrYK_15DxES10TKH3_hnRR",
 };
