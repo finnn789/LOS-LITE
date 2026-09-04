@@ -102,6 +102,26 @@ public class ApplicantController {
         return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil data applicant", response));
     }
 
+    // Lookup pakai NIK, bukan id - supaya klien (form dinamis) bisa resolve applicantId
+    // sebelum POST /loan-applications cukup modal NIK (yang user pasti tahu), tanpa perlu
+    // scroll/cari manual di GET /applicants (list semua) buat nemuin id-nya.
+    @GetMapping("/by-nik/{nik}")
+    public ResponseEntity<ApiResponse<ApplicantResponse>> getByNik(@PathVariable String nik) {
+        Applicant applicant = applicantService.getByNik(nik);
+
+        ApplicantResponse response = new ApplicantResponse(
+                applicant.getId(),
+                applicant.getFullName(),
+                applicant.getNik(),
+                applicant.getDateOfBirth(),
+                applicant.getPhoneNumber(),
+                applicant.getEmail(),
+                applicant.getAddress()
+        );
+
+        return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil data applicant", response));
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<ApplicantSummaryResponse>>> getAll() {
         List<ApplicantSummaryResponse> responses = applicantService.getAll()

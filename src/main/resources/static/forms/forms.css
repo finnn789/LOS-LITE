@@ -161,6 +161,23 @@ button[type="submit"]:disabled { opacity: 0.6; cursor: not-allowed; }
 .banner.error { background: var(--danger-bg); color: var(--danger); border: 1px solid #fecaca; }
 .banner.success { background: var(--success-bg); color: var(--success); border: 1px solid #bbf7d0; }
 
+/* --- Hasil response submit (lihat renderSubmitResult di dynamic-form.js) --- */
+.submit-result {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 18px;
+    background: #f9fafb;
+}
+.submit-result-id {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 4px;
+}
+.submit-result-id:empty { display: none; margin-bottom: 0; }
+.submit-result .detail-list dt:first-child { margin-top: 0; }
+
 .skeleton {
     text-align: center;
     color: var(--text-muted);

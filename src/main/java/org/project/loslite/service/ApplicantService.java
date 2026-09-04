@@ -80,6 +80,18 @@ public class ApplicantService {
                         "Applicant dengan id " + id + " tidak ditemukan"));
     }
 
+    // Lookup pakai NIK (kunci alami yang diketahui user), bukan id (kunci teknis DB) -
+    // dipakai form/klien buat resolve applicantId sebelum submit LoanApplication, tanpa
+    // perlu hardcode/hafal id. Hash NIK-nya dulu, sama seperti create/update, karena yang
+    // di-index unik di DB (dan yang bisa di-query) adalah nik_hash, bukan nik mentah.
+    @Transactional(readOnly = true)
+    public Applicant getByNik(String nik) {
+        String nikHash = hashNik(nik);
+        return applicantPersist.findByNikHash(nikHash)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Applicant dengan NIK " + nik + " tidak ditemukan"));
+    }
+
     @Transactional(readOnly = true)
     public List<Applicant> getAll() {
         return applicantPersist.findAll();

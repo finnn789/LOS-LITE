@@ -57,6 +57,10 @@
         title: document.getElementById("formTitle"),
         subtitle: document.getElementById("formSubtitle"),
         banner: document.getElementById("banner"),
+        // Response submit apa adanya (lihat renderSubmitResult/hideSubmitResult).
+        submitResult: document.getElementById("submitResult"),
+        submitResultId: document.getElementById("submitResultId"),
+        submitResultList: document.getElementById("submitResultList"),
         skeleton: document.getElementById("skeleton"),
         form: document.getElementById("dynamicForm"),
         meta: document.getElementById("metaInfo"),
@@ -84,6 +88,43 @@
     function hideBanner() {
         els.banner.className = "banner";
         els.banner.textContent = "";
+    }
+
+    function hideSubmitResult() {
+        els.submitResult.style.display = "none";
+        els.submitResultId.textContent = "";
+        els.submitResultList.innerHTML = "";
+    }
+
+    // Tampilkan response submit apa adanya - biar user bisa lihat field yang dikembalikan
+    // server (mis. "id" record yang baru dibuat, dipakai lagi sebagai input form lain)
+    // tanpa perlu buka Network tab browser. extractSingleRecord/formatCellValue dipakai
+    // ulang dari mode tabel data (lihat definisinya di bawah - aman dipanggil dari sini
+    // walau posisinya lebih dulu di file, function declaration di-hoist JS) - toleran
+    // terhadap bentuk response apa pun: dibungkus ApiResponse LOS-LITE ({data:{...}})
+    // atau object langsung.
+    function renderSubmitResult(body) {
+        const record = extractSingleRecord(body);
+        if (!record || typeof record !== "object" || Array.isArray(record)) {
+            hideSubmitResult();
+            return;
+        }
+
+        els.submitResultId.textContent = (record.id !== undefined && record.id !== null)
+            ? "ID: " + record.id
+            : "";
+
+        els.submitResultList.innerHTML = "";
+        Object.keys(record).forEach(function (key) {
+            const dt = document.createElement("dt");
+            dt.textContent = key;
+            const dd = document.createElement("dd");
+            dd.textContent = formatCellValue(record[key]);
+            els.submitResultList.appendChild(dt);
+            els.submitResultList.appendChild(dd);
+        });
+
+        els.submitResult.style.display = "block";
     }
 
     // Mapping tipe field schema Auto Layout -> tipe <input> HTML. Tipe yang belum
@@ -254,6 +295,7 @@
 
     function handleSubmit(inputFields, target, submitField, submitBtn) {
         hideBanner();
+        hideSubmitResult();
 
         if (!target) {
             showBanner("error", "Form ini tidak punya tujuan submit (button tanpa url/path).");
@@ -308,9 +350,12 @@
                 } else {
                     showBanner("success", "Data berhasil dikirim.");
                 }
+
+                renderSubmitResult(body);
             })
             .catch(function (err) {
                 showBanner("error", "Gagal mengirim data: " + err.message);
+                hideSubmitResult();
             })
             .finally(function () {
                 submitBtn.disabled = false;

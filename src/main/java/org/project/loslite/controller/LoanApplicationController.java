@@ -19,6 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * Pintu masuk HTTP untuk siklus hidup LoanApplication: create (draft) -> submit ->
  * document verification -> scoring -> review (jalur MANUAL_REVIEW) -> disburse. Setiap
@@ -62,6 +64,20 @@ public class LoanApplicationController {
     public ResponseEntity<ApiResponse<LoanApplicationResponse>> getById(@PathVariable Long id) {
         LoanApplication loanApplication = loanApplicationService.getById(id);
         return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil data pengajuan", toResponse(loanApplication)));
+    }
+
+    // Cari id LoanApplication milik seorang applicant - dipakai kalau kamu cuma modal
+    // applicantId (mis. hasil ApplicantController#getByNik) dan belum/lupa id pengajuannya,
+    // supaya bisa lanjut submit/document-verification/scoring/review/disburse tanpa perlu
+    // scroll manual atau nyimpen id dari response create sebelumnya.
+    @GetMapping("/by-applicant/{applicantId}")
+    public ResponseEntity<ApiResponse<List<LoanApplicationResponse>>> getByApplicantId(@PathVariable Long applicantId) {
+        List<LoanApplicationResponse> responses = loanApplicationService.getByApplicantId(applicantId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil pengajuan milik applicant", responses));
     }
 
     // Cuma field bisnis (jumlah/tenor/tujuan/penghasilan/utang) - lihat javadoc

@@ -12,6 +12,8 @@ import org.project.loslite.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 /**
  * Use-case orchestrator untuk bagian siklus hidup LoanApplication yang TIDAK terikat ke
  * orkestrasi Camunda: create draft & pindah ke DOCUMENT_VERIFICATION. Class ini sengaja
@@ -71,6 +73,21 @@ public class LoanApplicationService {
         return loanApplicationPersist.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "LoanApplication dengan id " + id + " tidak ditemukan"));
+    }
+
+    // Histori pengajuan milik satu applicant - dipakai buat resolve LoanApplication id
+    // (mis. buat lanjut submit/document-verification/dst) tanpa perlu simpan/hafal id
+    // manual, cukup modal applicantId (yang sendirinya bisa didapat dari
+    // ApplicantService#getByNik). Validasi applicant-nya ada dulu supaya error message-nya
+    // jelas beda antara "applicant tidak ada" vs "applicant ada tapi belum pernah mengajukan".
+    @Transactional(readOnly = true)
+    public List<LoanApplication> getByApplicantId(Long applicantId) {
+        if (applicantPersist.findById(applicantId).isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "Applicant dengan id " + applicantId + " tidak ditemukan");
+        }
+
+        return loanApplicationPersist.findByApplicantId(applicantId);
     }
 
     @Transactional

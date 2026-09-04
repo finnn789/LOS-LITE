@@ -15,6 +15,15 @@
         <p class="subtitle" id="formSubtitle"></p>
 
         <div id="banner" class="banner"></div>
+
+        <!-- Response submit apa adanya (lihat renderSubmitResult di dynamic-form.js) -
+             ID record yang baru dibuat/diubah ditonjolkan di submitResultId, sisa field
+             lain ditampilkan sebagai daftar key-value di submitResultList. -->
+        <div id="submitResult" class="submit-result" style="display:none;">
+            <div class="submit-result-id" id="submitResultId"></div>
+            <dl class="detail-list" id="submitResultList"></dl>
+        </div>
+
         <div id="skeleton" class="skeleton">Mengambil form schema&hellip;</div>
 
         <form id="dynamicForm" style="display:none;"></form>
