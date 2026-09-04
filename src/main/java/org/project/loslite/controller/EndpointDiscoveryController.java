@@ -37,6 +37,6 @@ public class EndpointDiscoveryController {
 
     @PostMapping(path = "/path", produces = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponse<Map<String, Object>> getSchema(@RequestBody EndpointPathRequest body) {
-        return endpointDiscoveryService.getSchemaByPath(body.path());
+        return endpointDiscoveryService.getSchemaByPath(body.path(), body.method());
     }
 }

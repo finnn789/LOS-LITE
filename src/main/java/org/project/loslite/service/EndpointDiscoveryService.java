@@ -66,15 +66,21 @@ public class EndpointDiscoveryService {
                 .toList();
     }
 
-    public ApiResponse<Map<String, Object>> getSchemaByPath(String path) {
+    public ApiResponse<Map<String, Object>> getSchemaByPath(String path, String method) {
+        // Satu path bisa punya lebih dari satu handler (mis. GET dan POST sama-sama di
+        // "/applicants"), jadi method dipakai buat disambiguasi kalau dikirim. Kalau
+        // kosong, jatuh balik ke perilaku lama: ambil handler pertama yang cocok path-nya.
         Optional<HandlerMethod> matched = handlerMapping.getHandlerMethods().entrySet().stream()
                 .filter(entry -> isControllerPackage(entry.getValue().getBeanType()))
                 .filter(entry -> extractPatterns(entry.getKey()).contains(path))
+                .filter(entry -> method == null || method.isBlank()
+                        || entry.getKey().getMethodsCondition().getMethods().stream()
+                                .anyMatch(m -> m.name().equalsIgnoreCase(method)))
                 .map(Map.Entry::getValue)
                 .findFirst();
 
         if (matched.isEmpty()) {
-            return ApiResponse.error("Endpoint dengan path " + path + " tidak ditemukan");
+            return ApiResponse.error("Endpoint " + (method == null ? "" : method + " ") + path + " tidak ditemukan");
         }
 
         HandlerMethod handler = matched.get();
