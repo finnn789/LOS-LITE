@@ -16,23 +16,29 @@ server:
   port: ${SERVER_PORT:8082}
 # WORKFLOW: workflow engine terpisah (org.lite.project.workflow, lihat
 # component/WorkflowAppClient.java & component/WorkflowSocketClient.java untuk
-# pemakaiannya). BUKAN LAGI WORKFLOW-APP/Camunda - engine ini jauh lebih sederhana
-# (belum ada gateway/conditional routing), jadi workflow-key di bawah menunjuk ke definisi
-# BPMN LINEAR "Process-LoanVerification" (3 serviceTask: document-verification ->
-# run-scoring -> UserTask_OfficerReview -> end, id=7 di tabel workflow_definitions) -
-# BUKAN proses "loan-application-process" asli (yang masih butuh
-# Gateway_ScoringDecision - lihat javadoc LoanApplicationWorkflowService). Node id-nya
+# pemakaiannya). BUKAN LAGI WORKFLOW-APP/Camunda. workflow-key di bawah HARUS SAMA PERSIS
+# dengan field "workflowKey" yang dipakai saat POST /api/workflows/deploy (form-data,
+# BUKAN diambil dari <bpmn:process id="..."> di file .bpmn-nya - dua hal itu independen).
+# BPMN yang di-deploy sekarang punya 2 exclusiveGateway (Gateway_ScoringDecision berdasar
+# variable "decision", gateway_review berdasar variable "reviewDecision") - node id-nya
 # SENGAJA disamakan dengan TASK_DEFINITION_*/EXTERNAL_TASK_TOPIC_* di
-# LoanApplicationWorkflowService, jadi submit()/moveToDocumentVerification()/
-# runScoring()/review() langsung nyambung tanpa ubah kode itu - disburse() TETAP tidak
-# akan nemu task (BPMN ini belum punya node untuk itu). Belum ada auth di sisi WORKFLOW,
-# jadi tidak ada service-token/service-code/business-flow-code lagi (beda dari
-# WORKFLOW-APP).
+# LoanApplicationWorkflowService (verifikasi_dokumen, jalankan_scoring, officer_review,
+# disburse_task), jadi submit()/moveToDocumentVerification()/runScoring()/review()/
+# disburse() semuanya nyambung tanpa ubah kode itu - workflow-key di bawah sudah
+# disesuaikan ke "los-lite-bpmn", persis field workflowKey yang dipakai saat deploy.
+# WORKFLOW mewajibkan HTTP Basic Auth di semua endpoint /api/** DAN handshake WebSocket
+# /ws (lihat dokumentasi API WORKFLOW) - beda dari WORKFLOW-APP dulu yang pakai Bearer
+# service-token; username/password di bawah dipasang sebagai default header oleh
+# WebClientConfig/WorkflowSocketClient. Fallback dev admin/admin123 SAMA PERSIS dengan
+# fallback dev bawaan WORKFLOW sendiri kalau WORKFLOW_API_USERNAME/PASSWORD tidak diset di
+# sana - HARUS di-override berbarengan di kedua sisi kalau mau ganti kredensial.
 workflow-app:
   enabled: ${WORKFLOW_APP_ENABLED:true}
   base-url: ${WORKFLOW_APP_BASE_URL:http://localhost:8081}
   ws-url: ${WORKFLOW_APP_WS_URL:ws://localhost:8081/ws}
-  workflow-key: ${WORKFLOW_APP_WORKFLOW_KEY:Process-LoanVerification}
+  workflow-key: ${WORKFLOW_APP_WORKFLOW_KEY:los-lite-bpmn}
+  username: ${WORKFLOW_API_USERNAME:admin}
+  password: ${WORKFLOW_API_PASSWORD:admin123}
 jwt:
   secret: ${JWT_SECRET:dev-only-secret-key-jangan-dipakai-di-production-ganti-ini}
   expiration-ms: ${JWT_EXPIRATION_MS:3600000} # 1 jam
