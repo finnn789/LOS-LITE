@@ -107,5 +107,8 @@
             });
     }
 
-    loadForms();
+    // Tidak auto-run lagi seperti sebelumnya - halaman ini sekarang mensyaratkan login
+    // (lihat login.js). login.js yang memanggil LosLiteForms.load() setelah user berhasil
+    // masuk (atau langsung, kalau token LOS-LITE sudah tersimpan dari sesi sebelumnya).
+    window.LosLiteForms = { load: loadForms };
 })();

@@ -34,7 +34,15 @@ public class SecurityConfig {
             "/auth/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
-            "/v3/api-docs/**"
+            "/v3/api-docs/**",
+            // Halaman statis /forms (index.html = layar login + Daftar Form,
+            // dynamic-form.html, dan asset JS/CSS-nya) HARUS public - kalau tidak,
+            // request GET /forms/index.html sendiri sudah kena 401 duluan (lihat
+            // anyRequest().authenticated() di bawah), padahal justru dari halaman
+            // itulah user login untuk DAPAT token-nya. Endpoint data di baliknya
+            // (mis. /auth/login, /applicants, dst.) tetap dilindungi seperti biasa -
+            // yang di-permitAll cuma file statisnya, bukan API-nya.
+            "/forms/**"
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;

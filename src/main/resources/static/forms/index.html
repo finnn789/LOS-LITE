@@ -8,8 +8,39 @@
 </head>
 <body>
 
-<div class="container wide">
+<!-- Layar login: tampil duluan. Disembunyikan oleh login.js begitu ada token LOS-LITE
+     yang valid (baru login, atau sudah tersimpan dari sesi sebelumnya) - lalu digantikan
+     oleh #formsContainer (Daftar Form) di bawah. -->
+<div class="container" id="loginContainer">
     <div class="card">
+        <h1>Login</h1>
+        <p class="subtitle">Masuk untuk melihat Daftar Form</p>
+
+        <div id="loginBanner" class="banner"></div>
+
+        <form id="loginForm">
+            <div class="field">
+                <label for="loginUsername">Username<span class="req">*</span></label>
+                <input type="text" id="loginUsername" name="username" autocomplete="username" required>
+            </div>
+            <div class="field">
+                <label for="loginPassword">Password<span class="req">*</span></label>
+                <input type="password" id="loginPassword" name="password" autocomplete="current-password" required>
+            </div>
+            <button type="submit" id="loginSubmitBtn">Masuk</button>
+        </form>
+    </div>
+</div>
+
+<!-- Daftar Form: disembunyikan (display:none) sampai login.js memastikan user sudah
+     login. Isinya sama seperti sebelumnya, diisi oleh forms-list.js. -->
+<div class="container wide" id="formsContainer" style="display:none;">
+    <div class="card">
+        <div class="session-bar">
+            <span id="sessionUser"></span>
+            <a href="#" id="logoutLink" class="back-link">Keluar</a>
+        </div>
+
         <h1>Daftar Form</h1>
         <p class="subtitle">Form dinamis yang tersedia dari Auto Layout</p>
 
@@ -35,7 +66,9 @@
 </div>
 
 <script src="auto-layout-config.js"></script>
+<script src="los-lite-config.js"></script>
 <script src="forms-list.js"></script>
+<script src="login.js"></script>
 
 </body>
 </html>

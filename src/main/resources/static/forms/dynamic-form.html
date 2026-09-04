@@ -18,11 +18,25 @@
         <div id="skeleton" class="skeleton">Mengambil form schema&hellip;</div>
 
         <form id="dynamicForm" style="display:none;"></form>
+
+        <!-- Dipakai kalau schema.button.method GET (lihat renderDataTable di
+             dynamic-form.js) - form input di atas dipakai kalau bukan GET, dua-duanya
+             tidak pernah tampil bareng. -->
+        <button type="button" id="refreshTableBtn" class="btn-open" style="display:none;">Muat Ulang</button>
+        <div class="table-wrap" id="dynamicTableWrap" style="display:none;">
+            <table class="forms-table" id="dynamicTable">
+                <thead>
+                    <tr id="dynamicTableHead"></tr>
+                </thead>
+                <tbody id="dynamicTableBody"></tbody>
+            </table>
+        </div>
     </div>
     <p class="meta" id="metaInfo"></p>
 </div>
 
 <script src="auto-layout-config.js"></script>
+<script src="los-lite-config.js"></script>
 <script src="dynamic-form.js"></script>
 
 </body>

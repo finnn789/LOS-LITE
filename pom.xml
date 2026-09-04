@@ -68,6 +68,15 @@
             <version>4.0.0</version>
         </dependency>
 
+        <!-- WebSocket/STOMP CLIENT (bukan server - LOS-LITE tidak expose endpoint WS sendiri):
+             org.project.loslite.component.WorkflowSocketClient pakai WebSocketStompClient dari
+             modul ini untuk subscribe /topic/workflow/{instanceId} milik WORKFLOW (lihat
+             config/WorkflowSocketConfig, component/WorkflowAppClient). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
         <!-- Database driver -->
         <dependency>
             <groupId>org.postgresql</groupId>
