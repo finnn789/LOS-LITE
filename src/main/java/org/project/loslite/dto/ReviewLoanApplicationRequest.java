@@ -5,6 +5,9 @@ import org.project.loslite.enums.ReviewDecision;
 
 public record ReviewLoanApplicationRequest(
 
+        @NotNull(message = "id wajib diisi")
+        Long id,
+
         @NotNull(message = "decision wajib diisi (APPROVE atau REJECT)")
         ReviewDecision decision
 ) {

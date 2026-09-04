@@ -1,7 +1,6 @@
 package org.project.loslite.component;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.project.loslite.dto.WorkflowExecutionEventPayload;
 import org.project.loslite.dto.WorkflowTaskInfo;
 import org.project.loslite.dto.WorkflowTriggerResult;
@@ -25,10 +24,10 @@ import java.util.Optional;
 /**
  * Implementasi {@link WorkflowEngineClient} - panggil REST + WebSocket
  * {@code org.lite.project.workflow} ("WORKFLOW", lihat dokumentasi API-nya), BUKAN LAGI
- * WORKFLOW-APP/Camunda. WORKFLOW jauh lebih sederhana dari WORKFLOW-APP: satu definisi
- * BPMN linear (START_EVENT -> SERVICE_TASK -> END_EVENT, belum ada gateway), tidak kenal
- * businessKey/correlationId/topic sama sekali - cuma instanceId (UUID) & taskId (UUID)
- * miliknya sendiri.
+ * WORKFLOW-APP/Camunda. WORKFLOW lebih sederhana dari WORKFLOW-APP - {@code exclusiveGateway}
+ * doang (kondisi {@code ${variable operator literal}}, tanpa expression engine), tidak ada
+ * parallel gateway - dan tidak kenal businessKey/correlationId/topic sama sekali, cuma
+ * instanceId (UUID) & taskId (UUID) miliknya sendiri.
  * <p>
  * businessKey -> instanceId WORKFLOW disimpan sendiri di sini lewat
  * {@link WorkflowLiteInstancePersist} ({@link WorkflowLiteInstance}), karena WORKFLOW
@@ -56,7 +55,6 @@ public class WorkflowAppClient implements WorkflowEngineClient {
     private final WorkflowSocketClient socketClient;
     private final WorkflowLiteInstancePersist instancePersist;
     private final TransactionTemplate transactionTemplate;
-    private final ObjectMapper objectMapper;
     private final boolean enabled;
     private final String workflowKey;
 
@@ -65,14 +63,12 @@ public class WorkflowAppClient implements WorkflowEngineClient {
             WorkflowSocketClient socketClient,
             WorkflowLiteInstancePersist instancePersist,
             TransactionTemplate transactionTemplate,
-            ObjectMapper objectMapper,
             @Value("${workflow-app.enabled}") boolean enabled,
             @Value("${workflow-app.workflow-key}") String workflowKey) {
         this.workflowAppWebClient = workflowAppWebClient;
         this.socketClient = socketClient;
         this.instancePersist = instancePersist;
         this.transactionTemplate = transactionTemplate;
-        this.objectMapper = objectMapper;
         this.enabled = enabled;
         this.workflowKey = workflowKey;
     }
@@ -94,12 +90,18 @@ public class WorkflowAppClient implements WorkflowEngineClient {
         }
 
         try {
-            String inputData = objectMapper.writeValueAsString(variables);
-
+            // Body = variables APA ADANYA (object JSON, BUKAN String hasil serialize
+            // manual) - dokumentasi API WORKFLOW: "Body: JSON object jadi variable awal
+            // proses". Jackson2JsonEncoder yang encode langsung ke Content-Type
+            // application/json; bodyValue(String) + contentType(APPLICATION_JSON) TIDAK
+            // dipakai di sini karena WebFlux sengaja tidak punya encoder String untuk
+            // application/json (CharSequenceEncoder cuma jalan untuk text/plain) - salah
+            // pakai kombinasi itu bikin request gagal encode diam-diam (ketangkep
+            // catch Exception di bawah, keliatannya cuma "gagal trigger" tanpa sebab jelas).
             StartedInstanceView view = workflowAppWebClient.post()
                     .uri("/api/workflows/{workflowKey}/start", workflowKey)
-                    .contentType(MediaType.TEXT_PLAIN)
-                    .bodyValue(inputData)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(variables)
                     .retrieve()
                     .bodyToMono(StartedInstanceView.class)
                     .block();
@@ -180,12 +182,12 @@ public class WorkflowAppClient implements WorkflowEngineClient {
         }
 
         try {
-            String outputData = objectMapper.writeValueAsString(variables);
-
+            // Sama seperti startProcess - variables dikirim apa adanya, bukan String hasil
+            // serialize manual, lihat komentar di startProcess soal kenapa.
             workflowAppWebClient.post()
                     .uri("/api/workflows/tasks/{taskId}/complete", taskId)
-                    .contentType(MediaType.TEXT_PLAIN)
-                    .bodyValue(outputData)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(variables)
                     .retrieve()
                     .toBodilessEntity()
                     .block();

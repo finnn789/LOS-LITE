@@ -3,6 +3,7 @@ package org.project.loslite.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.project.loslite.dto.CreateLoanApplicationCommand;
+import org.project.loslite.dto.LoanApplicationIdRequest;
 import org.project.loslite.dto.ReviewLoanApplicationRequest;
 import org.project.loslite.dto.UpdateLoanApplicationCommand;
 import org.project.loslite.dto.UpdateLoanApplicationRequest;
@@ -25,8 +26,10 @@ import org.springframework.web.bind.annotation.*;
  * hasil jadi response - tidak ada logika bisnis/state-machine sama sekali di sini (itu
  * ada di application/domain layer). submit/document-verification/scoring/review/disburse
  * sengaja lewat {@link LoanApplicationWorkflowService} (bukan LoanApplicationService/
- * ScoringService langsung) karena semuanya memicu orkestrasi Camunda - lihat javadoc
- * class itu.
+ * ScoringService langsung) karena semuanya memicu orkestrasi WORKFLOW - lihat javadoc
+ * class itu. Id pengajuan dikirim lewat body ({@link org.project.loslite.dto.LoanApplicationIdRequest}
+ * atau {@link ReviewLoanApplicationRequest}), BUKAN path variable - beda dari
+ * {@link #getById} yang tetap {@code /{id}} (murni GET, tidak ada body).
  */
 @RestController
 @RequestMapping("/loan-applications")
@@ -80,31 +83,30 @@ public class LoanApplicationController {
         return ResponseEntity.ok(ApiResponse.success("Pengajuan berhasil diperbarui", toResponse(updated)));
     }
 
-    @PostMapping("/{id}/submit")
-    public ResponseEntity<ApiResponse<LoanApplicationResponse>> submit(@PathVariable Long id) {
-        LoanApplication submitted = loanApplicationWorkflowService.submit(id);
+    @PostMapping("/submit")
+    public ResponseEntity<ApiResponse<LoanApplicationResponse>> submit(@Valid @RequestBody LoanApplicationIdRequest request) {
+        LoanApplication submitted = loanApplicationWorkflowService.submit(request.id());
         return ResponseEntity.ok(ApiResponse.success("Pengajuan berhasil disubmit", toResponse(submitted)));
     }
 
     // Lewat LoanApplicationWorkflowService (bukan LoanApplicationService langsung) - node
-    // "Verifikasi Dokumen" di BPMN WORKFLOW-APP adalah Camunda EXTERNAL TASK (topic
-    // "document-verification"), endpoint ini yang memicu penyelesaiannya di Camunda,
-    // lihat LoanApplicationWorkflowService#moveToDocumentVerification.
-    @PostMapping("/{id}/document-verification")
-    public ResponseEntity<ApiResponse<LoanApplicationResponse>> moveToDocumentVerification(@PathVariable Long id) {
-        LoanApplication moved = loanApplicationWorkflowService.moveToDocumentVerification(id);
+    // "Verifikasi Dokumen" di BPMN WORKFLOW adalah SERVICE_TASK topic "verifikasi_dokumen",
+    // endpoint ini yang memicu penyelesaiannya, lihat
+    // LoanApplicationWorkflowService#moveToDocumentVerification.
+    @PostMapping("/document-verification")
+    public ResponseEntity<ApiResponse<LoanApplicationResponse>> moveToDocumentVerification(@Valid @RequestBody LoanApplicationIdRequest request) {
+        LoanApplication moved = loanApplicationWorkflowService.moveToDocumentVerification(request.id());
 
         return ResponseEntity.ok(ApiResponse.success("Pengajuan masuk tahap verifikasi dokumen", toResponse(moved)));
     }
 
     // Lewat LoanApplicationWorkflowService (bukan ScoringService langsung) - node
-    // "Jalankan Scoring" di BPMN WORKFLOW-APP adalah Camunda EXTERNAL TASK (topic
-    // "run-scoring"), endpoint ini yang memicu penyelesaiannya di Camunda (kirim variable
-    // "decision" supaya gateway "Keputusan Scoring?" ikut ke-route), lihat
-    // LoanApplicationWorkflowService#runScoring.
-    @PostMapping("/{id}/scoring")
-    public ResponseEntity<ApiResponse<ScoringResponse>> runScoring(@PathVariable Long id) {
-        ScoringOutcome outcome = loanApplicationWorkflowService.runScoring(id);
+    // "Jalankan Scoring" di BPMN WORKFLOW adalah SERVICE_TASK topic "jalankan_scoring",
+    // endpoint ini yang memicu penyelesaiannya (kirim variable "decision" supaya gateway
+    // "Keputusan Scoring?" ikut ke-route), lihat LoanApplicationWorkflowService#runScoring.
+    @PostMapping("/scoring")
+    public ResponseEntity<ApiResponse<ScoringResponse>> runScoring(@Valid @RequestBody LoanApplicationIdRequest request) {
+        ScoringOutcome outcome = loanApplicationWorkflowService.runScoring(request.id());
 
         ScoringResponse response = new ScoringResponse(
                 outcome.dtiRatio(),
@@ -117,19 +119,18 @@ public class LoanApplicationController {
     }
 
     // Menutup jalur MANUAL_REVIEW (lihat ScoringService#applyDecisionToLoanStatus) - staff
-    // approve/reject manual, lewat LoanApplicationWorkflowService supaya User Task
-    // "Officer Review" di Tasklist (kalau proses Camunda-nya jalan) ikut ke-complete.
-    @PostMapping("/{id}/review")
-    public ResponseEntity<ApiResponse<LoanApplicationResponse>> review(
-            @PathVariable Long id, @Valid @RequestBody ReviewLoanApplicationRequest request) {
+    // approve/reject manual, lewat LoanApplicationWorkflowService supaya task
+    // "Officer Review" di WORKFLOW ikut ke-complete.
+    @PostMapping("/review")
+    public ResponseEntity<ApiResponse<LoanApplicationResponse>> review(@Valid @RequestBody ReviewLoanApplicationRequest request) {
 
-        LoanApplication reviewed = loanApplicationWorkflowService.review(id, request.decision());
+        LoanApplication reviewed = loanApplicationWorkflowService.review(request.id(), request.decision());
         return ResponseEntity.ok(ApiResponse.success("Keputusan review berhasil disimpan", toResponse(reviewed)));
     }
 
-    @PostMapping("/{id}/disburse")
-    public ResponseEntity<ApiResponse<LoanApplicationResponse>> disburse(@PathVariable Long id) {
-        LoanApplication disbursed = loanApplicationWorkflowService.disburse(id);
+    @PostMapping("/disburse")
+    public ResponseEntity<ApiResponse<LoanApplicationResponse>> disburse(@Valid @RequestBody LoanApplicationIdRequest request) {
+        LoanApplication disbursed = loanApplicationWorkflowService.disburse(request.id());
         return ResponseEntity.ok(ApiResponse.success("Dana berhasil dicairkan", toResponse(disbursed)));
     }
 

@@ -9,14 +9,23 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class WebClientConfig {
 
     /**
-     * WORKFLOW (org.lite.project.workflow) belum punya auth sama sekali di endpoint
-     * REST-nya - beda dari WORKFLOW-APP dulu yang butuh Bearer service-token. Kalau
-     * WORKFLOW nanti ditambah auth, header default-nya dipasang lagi di sini (lihat
-     * histori git untuk pola Bearer header yang sebelumnya ada).
+     * WORKFLOW (org.lite.project.workflow) mewajibkan HTTP Basic Auth di semua endpoint
+     * {@code /api/**} (lihat dokumentasi API WORKFLOW) - beda dari WORKFLOW-APP dulu yang
+     * butuh Bearer service-token. Kredensial dipasang sebagai default header di sini
+     * ({@code workflow-app.username}/{@code workflow-app.password}, lihat
+     * application.yml) supaya {@link org.project.loslite.component.WorkflowAppClient}
+     * tidak perlu tahu detail auth-nya sama sekali - tiap request lewat WebClient ini
+     * otomatis kebawa header {@code Authorization: Basic ...}.
      */
     @Bean
-    public WebClient workflowAppWebClient(@Value("${workflow-app.base-url}") String baseUrl) {
+    public WebClient workflowAppWebClient(
+            @Value("${workflow-app.base-url}") String baseUrl,
+            @Value("${workflow-app.username}") String username,
+            @Value("${workflow-app.password}") String password) {
 
-        return WebClient.builder().baseUrl(baseUrl).build();
+        return WebClient.builder()
+                .baseUrl(baseUrl)
+                .defaultHeaders(headers -> headers.setBasicAuth(username, password))
+                .build();
     }
 }
