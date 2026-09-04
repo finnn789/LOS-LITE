@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cari Pengajuan - LOS LITE</title>
+<link rel="stylesheet" href="forms.css">
+</head>
+<body>
+
+<div class="container wide">
+    <a class="back-link" href="index.html">&larr; Kembali ke daftar form</a>
+    <div class="card">
+        <h1>Cari Pengajuan Pinjaman</h1>
+        <p class="subtitle">Cari nasabah lewat NIK, pilih pengajuannya, lalu jalankan aksi - id pengajuan otomatis
+            terpakai dari baris yang dipilih, tidak perlu diketik manual.</p>
+
+        <div id="banner" class="banner"></div>
+
+        <div class="field">
+            <label for="nikInput">NIK Nasabah</label>
+            <input type="text" id="nikInput" placeholder="Masukkan NIK">
+        </div>
+        <button type="button" id="searchBtn" style="width:auto; padding:9px 22px;">Cari</button>
+
+        <!-- Langkah 2: info nasabah + daftar pengajuan miliknya (lihat loadLoanList di
+             loan-lookup.js). Disembunyikan sampai pencarian NIK berhasil. -->
+        <div id="applicantSection" style="display:none; margin-top:26px;">
+            <h2 style="font-size:15px; margin:0 0 8px;">Nasabah</h2>
+            <dl class="detail-list" id="applicantInfo"></dl>
+
+            <h2 style="font-size:15px; margin:20px 0 8px;">Daftar Pengajuan</h2>
+            <div id="loanListSkeleton" class="skeleton" style="display:none;">Mengambil daftar pengajuan&hellip;</div>
+            <div class="table-wrap">
+                <table class="forms-table" id="loanListTable" style="display:none;">
+                    <thead>
+                        <tr><th>ID</th><th>Status</th><th>Jumlah</th><th>Tujuan</th><th></th></tr>
+                    </thead>
+                    <tbody id="loanListBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Langkah 3: detail lengkap + tombol aksi (submit/verifikasi/scoring/approve/
+             reject/disburse) untuk pengajuan yang dipilih di langkah 2. -->
+        <div id="detailSection" style="display:none; margin-top:26px;">
+            <h2 style="font-size:15px; margin:0 0 8px;">Detail Pengajuan</h2>
+            <div id="detailBanner" class="banner"></div>
+            <div id="detailSkeleton" class="skeleton" style="display:none;">Mengambil detail&hellip;</div>
+            <dl class="detail-list" id="loanDetail"></dl>
+
+            <div id="actionButtons" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;"></div>
+        </div>
+    </div>
+</div>
+
+<script src="los-lite-config.js"></script>
+<script src="loan-lookup.js"></script>
+
+</body>
+</html>

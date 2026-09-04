@@ -280,6 +280,12 @@ button.btn-open {
     color: #fff;
 }
 .btn-row-action.primary:hover { background: var(--primary-hover); }
+.btn-row-action.danger {
+    background: var(--danger-bg);
+    border-color: var(--danger);
+    color: var(--danger);
+}
+.btn-row-action.danger:hover { background: #fee2e2; }
 
 /* --- Modal "Detail" / "Update" (lihat rowModalOverlay di dynamic-form.html) --- */
 .modal-overlay {
