@@ -10,18 +10,29 @@ spring:
       ddl-auto: update
     open-in-view: false
 server:
-  port: 8081
-# WORKFLOW-APP: workflow orchestrator terpisah (Camunda 7 external, lihat
-# workflow/LoanApplicationWorkflowService.java untuk pemakaiannya). service-token BELUM
-# final - tim WORKFLOW-APP belum konfirmasi algoritma JWT (RS256/JWKS vs HS256) & klaim
-# role yang diharapkan, jadi sementara ini string mentah dikirim apa adanya sebagai
-# Authorization: Bearer <token>. Ganti WORKFLOW_APP_SERVICE_TOKEN begitu sudah dikonfirmasi.
+  # 8082, BUKAN 8081 lagi - 8081 sekarang dipakai WORKFLOW sendiri (lihat blok
+  # workflow-app di bawah), jadi harus beda port dari LOS-LITE atau dua service ini
+  # tidak akan bisa jalan bersamaan di mesin yang sama.
+  port: ${SERVER_PORT:8082}
+# WORKFLOW: workflow engine terpisah (org.lite.project.workflow, lihat
+# component/WorkflowAppClient.java & component/WorkflowSocketClient.java untuk
+# pemakaiannya). BUKAN LAGI WORKFLOW-APP/Camunda - engine ini jauh lebih sederhana
+# (belum ada gateway/conditional routing), jadi workflow-key di bawah menunjuk ke definisi
+# BPMN LINEAR "Process-LoanVerification" (3 serviceTask: document-verification ->
+# run-scoring -> UserTask_OfficerReview -> end, id=7 di tabel workflow_definitions) -
+# BUKAN proses "loan-application-process" asli (yang masih butuh
+# Gateway_ScoringDecision - lihat javadoc LoanApplicationWorkflowService). Node id-nya
+# SENGAJA disamakan dengan TASK_DEFINITION_*/EXTERNAL_TASK_TOPIC_* di
+# LoanApplicationWorkflowService, jadi submit()/moveToDocumentVerification()/
+# runScoring()/review() langsung nyambung tanpa ubah kode itu - disburse() TETAP tidak
+# akan nemu task (BPMN ini belum punya node untuk itu). Belum ada auth di sisi WORKFLOW,
+# jadi tidak ada service-token/service-code/business-flow-code lagi (beda dari
+# WORKFLOW-APP).
 workflow-app:
   enabled: ${WORKFLOW_APP_ENABLED:true}
-  base-url: ${WORKFLOW_APP_BASE_URL:http://localhost:8090}
-  service-token: ${WORKFLOW_APP_SERVICE_TOKEN:}
-  service-code: ${WORKFLOW_APP_SERVICE_CODE:LOS-LITE}
-  business-flow-code: ${WORKFLOW_APP_BUSINESS_FLOW_CODE:LOAN_ORIGINATION}
+  base-url: ${WORKFLOW_APP_BASE_URL:http://localhost:8081}
+  ws-url: ${WORKFLOW_APP_WS_URL:ws://localhost:8081/ws}
+  workflow-key: ${WORKFLOW_APP_WORKFLOW_KEY:Process-LoanVerification}
 jwt:
   secret: ${JWT_SECRET:dev-only-secret-key-jangan-dipakai-di-production-ganti-ini}
   expiration-ms: ${JWT_EXPIRATION_MS:3600000} # 1 jam

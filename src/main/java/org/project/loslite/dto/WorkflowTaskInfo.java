@@ -3,12 +3,14 @@ package org.project.loslite.dto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * Satu Camunda User Task yang sedang terbuka di WORKFLOW-APP (endpoint GET
- * /api/v1/business-processes/{businessKey}/tasks, field "data[]" - lihat TaskResponse di
- * dokumentasi WORKFLOW-APP). Cuma field yang benar-benar dipakai LOS-LITE
- * (LoanApplicationWorkflowService mencari task lewat taskDefinitionKey, complete lewat
- * id) yang di-map di sini - name/assignee/created/formKey/processDefinitionId dari
- * response asli sengaja tidak ikut ditarik.
+ * Satu task WORKFLOW yang sedang terbuka untuk businessKey tertentu - dibangun oleh
+ * {@link org.project.loslite.component.WorkflowAppClient#findOpenTasks} dari cache
+ * currentTaskId/currentNodeId di {@link org.project.loslite.model.WorkflowLiteInstance}
+ * (BUKAN hasil parsing langsung response WORKFLOW - engine itu tidak punya endpoint
+ * "list task per businessKey", cuma per instanceId). {@code taskDefinitionKey} diisi
+ * nodeId BPMN (nama field dipertahankan dari kontrak Camunda lama - LoanApplicationWorkflowService
+ * mencari task lewat field ini, complete lewat {@code id}); {@code processInstanceId}
+ * diisi instanceId WORKFLOW.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record WorkflowTaskInfo(

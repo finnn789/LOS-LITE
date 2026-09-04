@@ -5,16 +5,15 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.Instant;
 
 /**
- * Hasil trigger business process di WORKFLOW-APP (endpoint POST
- * /api/v1/triggers/business-process, field "data" - lihat TriggerAcceptedResponse di
- * dokumentasi WORKFLOW-APP). status "STARTED" = camundaProcessInstanceId terisi;
- * "FAILED" = trigger tercatat tapi Camunda gagal dipanggil - WORKFLOW-APP TIDAK retry
- * otomatis (tidak ada lagi ProcessReconciliationService di WORKFLOW-APP, sudah dihapus),
- * jadi trigger yang FAILED akan diam sampai ada yang retry manual lewat WORKFLOW-APP
- * (POST /api/v1/business-processes/id/{triggerId}/retry) - LOS-LITE saat ini tidak punya
- * mekanisme otomatis untuk itu, lihat {@link org.project.loslite.workflow.LoanApplicationWorkflowService#startProcess}.
+ * Hasil start workflow instance di WORKFLOW (endpoint POST
+ * /api/workflows/{workflowKey}/start). {@code triggerId} & {@code camundaProcessInstanceId}
+ * (nama field dipertahankan dari kontrak WORKFLOW-APP/Camunda lama supaya
+ * {@code LoanApplicationWorkflowService} tidak perlu berubah) SAMA-SAMA diisi instanceId
+ * WORKFLOW - engine ini tidak punya konsep triggerId/processInstanceId terpisah seperti
+ * Camunda dulu. {@code status} nilainya langsung dari
+ * {@code WorkflowInstanceStatus} WORKFLOW (RUNNING/COMPLETED/FAILED/CANCELLED).
  * <p>
- * Semua field nullable dari sisi LOS-LITE: kalau WORKFLOW-APP sama sekali tidak bisa
+ * Semua field nullable dari sisi LOS-LITE: kalau WORKFLOW sama sekali tidak bisa
  * dihubungi, {@link org.project.loslite.component.WorkflowAppClient} mengembalikan
  * instance dengan semua field null alih-alih melempar exception (lihat javadoc
  * {@link org.project.loslite.interfaces.WorkflowEngineClient#startProcess}).
