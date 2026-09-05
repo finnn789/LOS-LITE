@@ -2,6 +2,7 @@ package org.project.loslite.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.project.loslite.dto.ApplicantNikResponse;
 import org.project.loslite.dto.CreateApplicantCommand;
 import org.project.loslite.dto.UpdateApplicantCommand;
 import org.project.loslite.dto.UpdateApplicantRequest;
@@ -120,6 +121,23 @@ public class ApplicantController {
         );
 
         return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil data applicant", response));
+    }
+
+    // NIK + nama + alamat semua applicant terdaftar - dipakai form/dropdown yang mau
+    // nawarin pilihan NIK yang sudah ada (mis. sebelum panggil GET /applicants/by-nik/{nik})
+    // sekalian nampilin nama/alamatnya biar gampang dikenali user, tanpa perlu narik
+    // seluruh field ApplicantSummaryResponse (tanggal lahir/telepon/email) yang tidak
+    // relevan buat use-case ini. Path literal "/niks" (bukan {sesuatu}), jadi tidak bentrok
+    // dengan "/{id}" - Spring selalu utamakan path literal yang cocok persis dibanding path
+    // variable, apapun urutan deklarasinya.
+    @GetMapping("/niks")
+    public ResponseEntity<ApiResponse<List<ApplicantNikResponse>>> getAllNiks() {
+        List<ApplicantNikResponse> responses = applicantService.getAll()
+                .stream()
+                .map(a -> new ApplicantNikResponse(a.getId(), a.getNik(), a.getFullName(), a.getAddress()))
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil NIK, nama, dan alamat semua applicant", responses));
     }
 
     @GetMapping

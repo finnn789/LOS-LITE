@@ -1,14 +1,14 @@
 (function () {
-    // Token key SAMA dengan yang dipakai dynamic-form.js (LOS_LITE_TOKEN_KEY di sana) -
-    // supaya begitu user login lewat halaman ini, form lain (mis. dynamic-form.html yang
-    // submit ke endpoint LOS-LITE ber-JWT) otomatis ikut terautentikasi tanpa login ulang,
-    // dan sebaliknya: kalau token sudah ada dari form "auth-login" Auto Layout, halaman ini
-    // langsung anggap sudah login.
+    // Token key SAMA dengan yang dipakai loan-lookup.js dan dynamic-form.html
+    // (LOS_LITE_TOKEN_KEY di file-file itu) - supaya begitu user login lewat halaman ini,
+    // halaman lain yang submit ke endpoint LOS-LITE ber-JWT otomatis ikut terautentikasi
+    // tanpa login ulang, dan sebaliknya: kalau token sudah ada dari sesi sebelumnya,
+    // halaman ini langsung anggap sudah login.
     const LOS_LITE_TOKEN_KEY = "losLiteJwtToken";
     const LOS_LITE_USER_KEY = "losLiteUser";
 
     // Base URL backend LOS-LITE sendiri - lihat los-lite-config.js (dimuat sebelum file
-    // ini di index.html), dipakai bareng juga oleh dynamic-form.js.
+    // ini di index.html), dipakai bareng juga oleh loan-lookup.js.
     const LOS_LITE_BASE_URL = window.LosLiteConfig.baseUrl;
 
     const els = {

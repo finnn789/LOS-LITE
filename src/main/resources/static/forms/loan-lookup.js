@@ -1,6 +1,6 @@
 (function () {
     // Base URL backend LOS-LITE sendiri - lihat los-lite-config.js. Halaman ini TIDAK
-    // pernah bicara ke Auto Layout sama sekali (beda dari dynamic-form.js) - seluruh
+    // pernah bicara ke Auto Layout sama sekali (beda dari dynamic-form.html) - seluruh
     // rantai NIK -> applicant -> daftar pengajuan -> detail + aksi murni manggil endpoint
     // bisnis LOS-LITE sendiri secara berurutan.
     const LOS_LITE_BASE_URL = window.LosLiteConfig.baseUrl;

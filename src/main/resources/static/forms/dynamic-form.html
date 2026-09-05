@@ -4,7 +4,120 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dynamic Form - LOS LITE</title>
-<link rel="stylesheet" href="forms.css">
+<style>
+/* =====================================================================
+   Satu file berdiri sendiri (HTML + CSS + JS) - SENGAJA tidak lagi
+   memuat forms.css/dynamic-form.js terpisah (lihat requirement "Satu
+   file, tanpa dependency eksternal"). Variabel & kelas di bawah adalah
+   subset forms.css yang benar-benar dipakai halaman ini, supaya
+   tampilannya tetap konsisten dengan index.html/loan-lookup.html
+   walau filenya independen.
+   ===================================================================== */
+:root {
+    --bg: #f2f4f7;
+    --card-bg: #ffffff;
+    --border: #dfe3e8;
+    --text: #1f2937;
+    --text-muted: #6b7280;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --danger: #dc2626;
+    --danger-bg: #fef2f2;
+    --success: #16a34a;
+    --success-bg: #f0fdf4;
+    --radius: 10px;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 32px 16px;
+}
+.container { max-width: 560px; margin: 0 auto; }
+.container.wide { max-width: 820px; }
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 28px 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+.card h1 { font-size: 20px; margin: 0 0 4px; }
+.card .subtitle { font-size: 13px; color: var(--text-muted); margin: 0 0 24px; }
+.back-link { display: inline-block; font-size: 13px; color: var(--primary); text-decoration: none; margin-bottom: 14px; }
+.back-link:hover { text-decoration: underline; }
+.field { margin-bottom: 18px; }
+.field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.field label .req { color: var(--danger); margin-left: 2px; }
+.field input, .field select, .field textarea {
+    width: 100%; padding: 9px 11px; font-size: 14px; border: 1px solid var(--border);
+    border-radius: 8px; background: #fff; color: var(--text); font-family: inherit;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+    outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.field-checkbox { display: flex; align-items: center; gap: 8px; }
+.field-checkbox input { width: auto; }
+.field-checkbox label { margin: 0; }
+form.layout-two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+form.layout-two-column button[type="submit"] { grid-column: 1 / -1; }
+@media (max-width: 520px) { form.layout-two-column { grid-template-columns: 1fr; } }
+button[type="submit"] {
+    width: 100%; padding: 11px; font-size: 14px; font-weight: 600; border: none;
+    border-radius: 8px; background: var(--primary); color: #fff; cursor: pointer; margin-top: 4px;
+    font-family: inherit;
+}
+button[type="submit"]:hover { background: var(--primary-hover); }
+button[type="submit"]:disabled { opacity: 0.6; cursor: not-allowed; }
+.banner { border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-bottom: 18px; display: none; }
+.banner.show { display: block; }
+.banner.error { background: var(--danger-bg); color: var(--danger); border: 1px solid #fecaca; }
+.banner.success { background: var(--success-bg); color: var(--success); border: 1px solid #bbf7d0; }
+.submit-result { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 18px; background: #f9fafb; }
+.submit-result-id { font-size: 14px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+.submit-result-id:empty { display: none; margin-bottom: 0; }
+.skeleton { text-align: center; color: var(--text-muted); font-size: 13px; padding: 24px 0; }
+.meta { font-size: 11px; color: var(--text-muted); margin-top: 16px; text-align: center; }
+.table-wrap { overflow-x: auto; }
+table.forms-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.forms-table th, table.forms-table td {
+    text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+table.forms-table th { color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.02em; }
+table.forms-table tbody tr:hover { background: #f9fafb; }
+.btn-open {
+    display: inline-block; padding: 6px 12px; font-size: 12px; font-weight: 600; border-radius: 6px;
+    background: var(--primary); color: #fff; text-decoration: none; border: none; cursor: pointer; font-family: inherit;
+}
+.btn-open:hover { background: var(--primary-hover); }
+.row-actions { display: flex; gap: 6px; white-space: nowrap; }
+.btn-row-action {
+    padding: 5px 10px; font-size: 12px; font-weight: 600; border-radius: 6px; border: 1px solid var(--border);
+    background: #fff; color: var(--text); cursor: pointer; font-family: inherit;
+}
+.btn-row-action:hover { background: #f9fafb; }
+.btn-row-action.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-row-action.primary:hover { background: var(--primary-hover); }
+.modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45);
+    align-items: center; justify-content: center; padding: 16px; z-index: 50;
+}
+.modal-overlay.show { display: flex; }
+.modal-card { width: 100%; max-width: 480px; max-height: calc(100vh - 64px); overflow-y: auto; }
+.modal-card h2 { font-size: 17px; margin: 0 0 16px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.modal-actions .btn-secondary {
+    padding: 9px 16px; font-size: 13px; font-weight: 600; border-radius: 8px; border: 1px solid var(--border);
+    background: #fff; color: var(--text); cursor: pointer; font-family: inherit;
+}
+.modal-actions .btn-secondary:hover { background: #f9fafb; }
+.modal-actions button[type="button"]:not(.btn-secondary) { width: auto; margin-top: 0; padding: 9px 16px; }
+.detail-list dt { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.02em; margin-top: 12px; }
+.detail-list dt:first-child { margin-top: 0; }
+.detail-list dd { margin: 2px 0 0; font-size: 14px; word-break: break-word; }
+</style>
 </head>
 <body>
 
@@ -16,9 +129,8 @@
 
         <div id="banner" class="banner"></div>
 
-        <!-- Response submit apa adanya (lihat renderSubmitResult di dynamic-form.js) -
-             ID record yang baru dibuat/diubah ditonjolkan di submitResultId, sisa field
-             lain ditampilkan sebagai daftar key-value di submitResultList. -->
+        <!-- Response submit apa adanya (lihat renderSubmitResult) - ID record yang
+             baru dibuat/diubah ditonjolkan, sisa field lain sebagai daftar key-value. -->
         <div id="submitResult" class="submit-result" style="display:none;">
             <div class="submit-result-id" id="submitResultId"></div>
             <dl class="detail-list" id="submitResultList"></dl>
@@ -26,17 +138,16 @@
 
         <div id="skeleton" class="skeleton">Mengambil form schema&hellip;</div>
 
+        <!-- schema.type "FORM" dirender ke sini. -->
         <form id="dynamicForm" style="display:none;"></form>
 
-        <!-- Dipakai kalau schema.button.method GET (lihat renderDataTable di
-             dynamic-form.js) - form input di atas dipakai kalau bukan GET, dua-duanya
-             tidak pernah tampil bareng. -->
-        <button type="button" id="refreshTableBtn" class="btn-open" style="display:none;">Muat Ulang</button>
+        <!-- schema.type "DATATABLE" dirender ke blok di bawah - dua-duanya (form vs
+             tabel) tidak pernah tampil bersamaan. -->
+        <button type="button" id="createDataBtn" class="btn-open" style="display:none; margin-bottom:12px;">+ Tambah Data</button>
+        <button type="button" id="refreshTableBtn" class="btn-open" style="display:none; margin-bottom:12px; margin-left:8px;">Muat Ulang</button>
         <div class="table-wrap" id="dynamicTableWrap" style="display:none;">
             <table class="forms-table" id="dynamicTable">
-                <thead>
-                    <tr id="dynamicTableHead"></tr>
-                </thead>
+                <thead><tr id="dynamicTableHead"></tr></thead>
                 <tbody id="dynamicTableBody"></tbody>
             </table>
         </div>
@@ -44,8 +155,9 @@
     <p class="meta" id="metaInfo"></p>
 </div>
 
-<!-- Modal buat tombol "Detail" (baca-saja, semua field respons) dan "Update" (form
-     edit) per baris tabel - lihat openDetailModal/openUpdateModal di dynamic-form.js. -->
+<!-- Modal generik dipakai bergantian oleh 3 aksi (cuma satu yang mungkin terbuka
+     dalam satu waktu): Detail baris (baca-saja), Update baris (form edit), dan
+     "+ Tambah Data" (createForm) - lihat openDetailModal/openUpdateModal/openCreateModal. -->
 <div class="modal-overlay" id="rowModalOverlay">
     <div class="card modal-card">
         <h2 id="rowModalTitle">Detail</h2>
@@ -58,9 +170,796 @@
     </div>
 </div>
 
-<script src="auto-layout-config.js"></script>
-<script src="los-lite-config.js"></script>
-<script src="dynamic-form.js"></script>
+<script>
+(function () {
+    "use strict";
+
+    // =====================================================================
+    // KONFIGURASI - taruh SEMUA yang gampang berubah di sini, di atas file,
+    // sesuai requirement ("konstanta yang gampang diubah"). File ini berdiri
+    // sendiri (tidak load auto-layout-config.js/los-lite-config.js) jadi
+    // nilainya DIDUPLIKASI dari sana - kalau base URL/token Auto Layout
+    // berubah, update juga di auto-layout-config.js (dipakai index.html &
+    // loan-lookup.html) supaya kedua tempat tetap sinkron.
+    // =====================================================================
+    var AUTO_LAYOUT_BASE = "http://25.21.167.25:8083";
+    var AUTO_LAYOUT_BEARER_TOKEN =
+        "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJsb3MtbGl0ZS1zZXJ2aWNlIiwicm9sZSI6IlNFUlZJQ0UifQ.sdjmMfnzU-vjDkuq94JIrbBvxrc8u8hAqeuPUkdVTatrYK_15DxES10TKH3_hnRR";
+
+    // Base URL LOS-LITE sendiri - halaman ini didesain jalan SAME-ORIGIN dengan
+    // backend bisnisnya, jadi window.location.origin otomatis benar apapun
+    // host/port-nya. Fallback localhost:8082 cuma buat kasus file:// (double-klik
+    // langsung di Explorer, bukan disajikan lewat server).
+    var LOS_LITE_BASE = window.location.protocol === "file:"
+        ? "http://localhost:8082"
+        : window.location.origin;
+
+    // Sama persis dengan key yang dipakai index.html/login.js/loan-lookup.js -
+    // supaya sesi login yang sama otomatis kepakai di halaman manapun.
+    var LOS_LITE_TOKEN_KEY = "losLiteJwtToken";
+
+    function getStoredToken() {
+        try { return localStorage.getItem(LOS_LITE_TOKEN_KEY) || ""; }
+        catch (e) { return ""; }
+    }
+
+    var queryParams = new URLSearchParams(window.location.search);
+    var formId = queryParams.get("formId");
+
+    var els = {
+        title: document.getElementById("formTitle"),
+        subtitle: document.getElementById("formSubtitle"),
+        banner: document.getElementById("banner"),
+        submitResult: document.getElementById("submitResult"),
+        submitResultId: document.getElementById("submitResultId"),
+        submitResultList: document.getElementById("submitResultList"),
+        skeleton: document.getElementById("skeleton"),
+        form: document.getElementById("dynamicForm"),
+        meta: document.getElementById("metaInfo"),
+        container: document.querySelector(".container"),
+        createDataBtn: document.getElementById("createDataBtn"),
+        refreshBtn: document.getElementById("refreshTableBtn"),
+        tableWrap: document.getElementById("dynamicTableWrap"),
+        tableHead: document.getElementById("dynamicTableHead"),
+        tableBody: document.getElementById("dynamicTableBody"),
+        rowModalOverlay: document.getElementById("rowModalOverlay"),
+        rowModalTitle: document.getElementById("rowModalTitle"),
+        rowModalBanner: document.getElementById("rowModalBanner"),
+        rowModalBody: document.getElementById("rowModalBody"),
+        rowModalCloseBtn: document.getElementById("rowModalCloseBtn"),
+        rowModalSaveBtn: document.getElementById("rowModalSaveBtn"),
+    };
+
+    // ---------------------------------------------------------------
+    // Banner & error helpers
+    // ---------------------------------------------------------------
+    function showBanner(kind, message) {
+        els.banner.className = "banner show " + kind;
+        els.banner.textContent = message;
+    }
+    function hideBanner() {
+        els.banner.className = "banner";
+        els.banner.textContent = "";
+    }
+
+    // Error FATAL (gagal total muat form/schema) - ganti judul & sembunyikan
+    // skeleton, tidak ada UI lanjutan yang bisa dipakai. Beda dari showBanner
+    // biasa yang dipakai buat error non-fatal (mis. gagal submit, masih bisa retry).
+    function showFatalError(message) {
+        els.skeleton.style.display = "none";
+        els.title.textContent = "Gagal memuat form";
+        showBanner("error", message);
+    }
+
+    function formatCellValue(value) {
+        if (value === null || value === undefined || value === "") return "-";
+        if (typeof value === "boolean") return value ? "Ya" : "Tidak";
+        if (typeof value === "object") {
+            try { return JSON.stringify(value); } catch (e) { return String(value); }
+        }
+        return String(value);
+    }
+
+    // Amplop response LOS-LITE selalu {success,message,data,timestamp} (dikonfirmasi
+    // langsung lewat curl ke /applicants/by-nik/{nik} & lainnya) - diambil apa
+    // adanya, tetap toleran kalau ada endpoint yang balikin object langsung.
+    function extractData(body) {
+        if (body && typeof body === "object" && "data" in body) return body.data;
+        return body;
+    }
+
+    // ---------------------------------------------------------------
+    // Kontrak A: resolusi {token} di path (source/button/createForm).
+    // Urutan pencarian nilai token (WAJIB, jangan diubah urutannya):
+    //   1) query string halaman ini (new URLSearchParams(location.search))
+    //   2) state (formState hasil fetch source, ATAU state baris tabel)
+    //   3) tidak ketemu di keduanya -> lempar Error yang jelas
+    // ---------------------------------------------------------------
+    // Ambil template path dari definisi endpoint (button/source/createForm) - "path"
+    // (konvensi BARU, relatif) diutamakan, fallback ke "url" (konvensi LAMA, kadang
+    // absolut) kalau "path" tidak ada. Lihat catatan kompatibilitas di apiFetch.
+    function pathTemplateOf(def) {
+        return (def && (def.path || def.url)) || null;
+    }
+
+    function resolvePath(pathTemplate, state) {
+        var missing = [];
+        var resolved = pathTemplate.replace(/\{([^{}]+)\}/g, function (match, token) {
+            var fromQuery = queryParams.get(token);
+            if (fromQuery !== null && fromQuery !== "") {
+                return encodeURIComponent(fromQuery);
+            }
+            if (state && Object.prototype.hasOwnProperty.call(state, token)
+                    && state[token] !== null && state[token] !== undefined) {
+                return encodeURIComponent(state[token]);
+            }
+            missing.push(token);
+            return match;
+        });
+
+        if (missing.length) {
+            throw new Error(
+                "Parameter " + missing.map(function (t) { return "{" + t + "}"; }).join(", ") +
+                " tidak tersedia - buka form ini dengan query string " +
+                missing.map(function (t) { return "?" + t + "=..."; }).join(" & ")
+            );
+        }
+        return resolved;
+    }
+
+    // ---------------------------------------------------------------
+    // Semua panggilan ke backend LOS-LITE (source/button/createForm/row actions)
+    // lewat sini - selalu relatif ke LOS_LITE_BASE (origin halaman ini sendiri,
+    // BUKAN Auto Layout), selalu bawa token JWT LOS-LITE kalau ada.
+    // ---------------------------------------------------------------
+    function apiFetch(path, options) {
+        options = options || {};
+        var headers = Object.assign({}, options.headers || {});
+        var token = getStoredToken();
+        if (token) headers["Authorization"] = "Bearer " + token;
+
+        // Kompatibilitas dengan schema LAMA Auto Layout: field "button" di sana masih
+        // bisa berisi "url" ABSOLUT (mis. peninggalan sebelum LOS-LITE pindah port),
+        // bukan "path" relatif. path yang sudah absolut (diawali http) dipakai apa
+        // adanya; selain itu digabung dengan LOS_LITE_BASE seperti biasa.
+        var url = /^https?:\/\//i.test(path) ? path : (LOS_LITE_BASE + path);
+
+        return fetch(url, Object.assign({}, options, { headers: headers }))
+            .then(function (res) {
+                return res.text().then(function (text) {
+                    var body = null;
+                    try { body = text ? JSON.parse(text) : null; } catch (e) { /* bukan JSON, abaikan */ }
+
+                    if (res.status === 401 || res.status === 403) {
+                        throw new Error("Akses ditolak (" + res.status + ") - login ulang lewat index.html.");
+                    }
+                    if (!res.ok) {
+                        throw new Error((body && body.message) || "Server membalas status " + res.status);
+                    }
+                    return body;
+                });
+            });
+    }
+
+    // ---------------------------------------------------------------
+    // Tipe field -> tipe <input> HTML. Tipe tak dikenal fallback ke text,
+    // bukan error, biar form generator tidak crash total kalau Auto Layout
+    // nambah tipe field baru di kemudian hari.
+    // ---------------------------------------------------------------
+    var INPUT_TYPE_MAP = { textfield: "text", date: "date", number: "number", email: "email" };
+
+    function appendRequiredMark(label, required) {
+        if (!required) return;
+        var mark = document.createElement("span");
+        mark.className = "req";
+        mark.textContent = "*";
+        label.appendChild(mark);
+    }
+
+    // Dipakai untuk field FORM utama (prefill dari formState, kontrak B.2/B.3) DAN
+    // untuk createForm.fields (state kosong, tanpa prefill) - satu fungsi, dua
+    // pemakaian, bedanya cuma stateObj yang dioper beda instance-nya.
+    function buildField(field, stateObj) {
+        var wrapper = document.createElement("div");
+        wrapper.className = "field";
+        var initialValue = stateObj[field.key];
+
+        if (field.type === "checkbox") {
+            wrapper.classList.add("field-checkbox");
+            var checkboxInput = document.createElement("input");
+            checkboxInput.type = "checkbox";
+            checkboxInput.id = "f_" + field.key;
+            checkboxInput.name = field.key;
+            if (field.required) checkboxInput.required = true;
+            checkboxInput.checked = Boolean(initialValue);
+            stateObj[field.key] = checkboxInput.checked;
+            checkboxInput.addEventListener("change", function () {
+                stateObj[field.key] = checkboxInput.checked;
+            });
+
+            var checkboxLabel = document.createElement("label");
+            checkboxLabel.htmlFor = checkboxInput.id;
+            checkboxLabel.textContent = field.label || field.key;
+            appendRequiredMark(checkboxLabel, field.required);
+
+            wrapper.appendChild(checkboxInput);
+            wrapper.appendChild(checkboxLabel);
+            return wrapper;
+        }
+
+        var label = document.createElement("label");
+        label.htmlFor = "f_" + field.key;
+        label.textContent = field.label || field.key;
+        appendRequiredMark(label, field.required);
+        wrapper.appendChild(label);
+
+        var input;
+        if (field.type === "textarea") {
+            input = document.createElement("textarea");
+            input.rows = 3;
+        } else if (field.type === "select") {
+            input = document.createElement("select");
+            (field.options || []).forEach(function (opt) {
+                var optionEl = document.createElement("option");
+                var isObj = opt && typeof opt === "object";
+                optionEl.value = isObj ? opt.value : opt;
+                optionEl.textContent = isObj ? (opt.label || opt.value) : opt;
+                input.appendChild(optionEl);
+            });
+        } else {
+            input = document.createElement("input");
+            input.type = INPUT_TYPE_MAP[field.type] || "text";
+        }
+
+        input.id = "f_" + field.key;
+        input.name = field.key;
+        if (field.required) input.required = true;
+        if (initialValue !== undefined && initialValue !== null) input.value = initialValue;
+        stateObj[field.key] = input.value;
+
+        input.addEventListener("input", function () {
+            stateObj[field.key] = input.value;
+        });
+
+        wrapper.appendChild(input);
+        return wrapper;
+    }
+
+    // =====================================================================
+    // FORM (schema.type === "FORM")
+    // =====================================================================
+
+    // Kontrak B: seluruh object hasil fetch source disimpan apa adanya di sini
+    // (bukan cuma key yang ada di schema.fields) - inilah yang bikin field
+    // seperti "id" (sengaja tidak ditampilkan sebagai input) tetap ikut
+    // terkirim saat submit, karena sudah nempel di sini sejak awal.
+    var formState = {};
+
+    function renderFormType(schema, formKey) {
+        els.title.textContent = formKey || "Form";
+        els.subtitle.textContent = "Isi data di bawah ini";
+
+        if (schema.layout === "two-column") {
+            els.form.classList.add("layout-two-column");
+            if (els.container) els.container.classList.add("wide");
+        }
+
+        function buildAndShowForm() {
+            els.form.innerHTML = "";
+
+            // Konvensi BARU: submitDef dari schema.button top-level. Konvensi LAMA:
+            // field bertipe "button" DI DALAM fields[] - kalau ada, field itu MENIMPA
+            // schema.button (dan tidak dirender sebagai input biasa) - sama seperti
+            // dynamic-form.js sebelumnya, supaya form yang sudah dibuat Auto Layout
+            // dengan gaya lama (mis. form "Data Nasabah" id 17) tetap jalan.
+            var submitDef = (schema && schema.button) || null;
+            var displayFields = [];
+            (schema.fields || []).forEach(function (field) {
+                if (field.type === "button") {
+                    submitDef = field;
+                    return;
+                }
+                displayFields.push(field);
+            });
+
+            displayFields.forEach(function (field) {
+                els.form.appendChild(buildField(field, formState));
+            });
+
+            if (pathTemplateOf(submitDef)) {
+                var submitBtn = document.createElement("button");
+                submitBtn.type = "submit";
+                submitBtn.textContent = submitDef.label || "Kirim";
+                els.form.appendChild(submitBtn);
+
+                els.form.onsubmit = function (e) {
+                    e.preventDefault();
+                    handleFormSubmit(submitDef, submitBtn);
+                };
+            } else {
+                // Kontrak: button opsional untuk FORM - tanpa itu form ini
+                // murni tampilan/prefill, tidak ada aksi submit.
+                var note = document.createElement("p");
+                note.className = "subtitle";
+                note.textContent = "Form ini tidak punya aksi submit (mode tampilan).";
+                els.form.appendChild(note);
+            }
+
+            els.skeleton.style.display = "none";
+            els.form.style.display = "block";
+        }
+
+        var sourceTemplate = pathTemplateOf(schema.source);
+        if (sourceTemplate) {
+            // Kontrak B.1: fetch source dulu, SELURUH response disimpan ke formState,
+            // baru field dirender (prefill dari situ).
+            var resolvedSourcePath;
+            try {
+                resolvedSourcePath = resolvePath(sourceTemplate, formState);
+            } catch (err) {
+                showFatalError(err.message);
+                return;
+            }
+
+            apiFetch(resolvedSourcePath, { method: (schema.source.method || "GET").toUpperCase() })
+                .then(function (body) {
+                    var data = extractData(body);
+                    if (data && typeof data === "object" && !Array.isArray(data)) {
+                        formState = Object.assign({}, data);
+                    }
+                    buildAndShowForm();
+                })
+                .catch(function (err) {
+                    showFatalError("Gagal mengambil data awal (" + sourceTemplate + "): " + err.message);
+                });
+        } else {
+            // Kontrak C: tanpa source, formState mulai dari object kosong.
+            formState = {};
+            buildAndShowForm();
+        }
+    }
+
+    function hideSubmitResult() {
+        els.submitResult.style.display = "none";
+        els.submitResultId.textContent = "";
+        els.submitResultList.innerHTML = "";
+    }
+
+    function renderSubmitResult(record) {
+        if (!record || typeof record !== "object" || Array.isArray(record)) {
+            hideSubmitResult();
+            return;
+        }
+        els.submitResultId.textContent = (record.id !== undefined && record.id !== null) ? "ID: " + record.id : "";
+        els.submitResultList.innerHTML = "";
+        Object.keys(record).forEach(function (key) {
+            var dt = document.createElement("dt");
+            dt.textContent = key;
+            var dd = document.createElement("dd");
+            dd.textContent = formatCellValue(record[key]);
+            els.submitResultList.appendChild(dt);
+            els.submitResultList.appendChild(dd);
+        });
+        els.submitResult.style.display = "block";
+    }
+
+    // Kontrak B.4/B.5: body = formState APA ADANYA (bukan cuma field yang
+    // dirender), path button di-resolve pakai formState juga, key yang dipakai
+    // sebagai path param SENGAJA tidak dihapus dari body.
+    function handleFormSubmit(buttonDef, submitBtn) {
+        hideBanner();
+        hideSubmitResult();
+
+        var resolvedPath;
+        try {
+            resolvedPath = resolvePath(pathTemplateOf(buttonDef), formState);
+        } catch (err) {
+            showBanner("error", err.message);
+            return;
+        }
+
+        var originalLabel = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Mengirim...";
+
+        apiFetch(resolvedPath, {
+            method: (buttonDef.method || "POST").toUpperCase(),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formState),
+        })
+            .then(function (body) {
+                showBanner("success", "Data berhasil dikirim.");
+                renderSubmitResult(extractData(body));
+            })
+            .catch(function (err) {
+                showBanner("error", "Gagal mengirim data: " + err.message);
+            })
+            .finally(function () {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalLabel;
+            });
+    }
+
+    // =====================================================================
+    // DATATABLE (schema.type === "DATATABLE") - kontrak D
+    // =====================================================================
+    var currentTableColumns = null;
+    var currentTableSourcePath = null; // path source SUDAH di-resolve, dipakai lagi buat {path}/{id}
+    var currentTableRows = {}; // id -> row object UTUH (bukan cuma kolom tampil), lihat kontrak D
+
+    function renderTableRows(columns, rows) {
+        els.tableBody.innerHTML = "";
+        currentTableRows = {};
+
+        if (!rows.length) {
+            els.skeleton.textContent = "Belum ada data.";
+            els.skeleton.style.display = "block";
+            return;
+        }
+
+        rows.forEach(function (row) {
+            if (row && row.id !== undefined && row.id !== null) {
+                currentTableRows[row.id] = row;
+            }
+
+            var tr = document.createElement("tr");
+            columns.forEach(function (field) {
+                var td = document.createElement("td");
+                td.textContent = formatCellValue(row ? row[field.key] : undefined);
+                tr.appendChild(td);
+            });
+
+            var tdAction = document.createElement("td");
+            if (row && row.id !== undefined && row.id !== null) {
+                var wrap = document.createElement("div");
+                wrap.className = "row-actions";
+
+                var detailBtn = document.createElement("button");
+                detailBtn.type = "button";
+                detailBtn.className = "btn-row-action";
+                detailBtn.textContent = "Detail";
+                detailBtn.addEventListener("click", function () { openDetailModal(row.id); });
+
+                var updateBtn = document.createElement("button");
+                updateBtn.type = "button";
+                updateBtn.className = "btn-row-action primary";
+                updateBtn.textContent = "Update";
+                updateBtn.addEventListener("click", function () { openUpdateModal(row.id); });
+
+                wrap.appendChild(detailBtn);
+                wrap.appendChild(updateBtn);
+                tdAction.appendChild(wrap);
+            }
+            tr.appendChild(tdAction);
+            els.tableBody.appendChild(tr);
+        });
+
+        els.skeleton.style.display = "none";
+    }
+
+    function loadTableData(columns, sourcePath, method) {
+        hideBanner();
+        els.tableBody.innerHTML = "";
+        els.skeleton.textContent = "Mengambil data…";
+        els.skeleton.style.display = "block";
+
+        apiFetch(sourcePath, { method: method })
+            .then(function (body) {
+                var data = extractData(body);
+                var rows;
+                if (Array.isArray(data)) rows = data;
+                else if (data && typeof data === "object") rows = [data];
+                else rows = [];
+                renderTableRows(columns, rows);
+            })
+            .catch(function (err) {
+                els.skeleton.style.display = "none";
+                showBanner("error", "Gagal mengambil data: " + err.message);
+            });
+    }
+
+    function renderDataTable(schema, formKey) {
+        els.title.textContent = formKey || "Data";
+        els.subtitle.textContent = "Data dari server";
+        if (els.container) els.container.classList.add("wide");
+
+        var sourceTemplate = pathTemplateOf(schema.source);
+        if (!sourceTemplate) {
+            els.skeleton.style.display = "none";
+            showBanner("error", "Tabel ini tidak punya sumber data (source tanpa path).");
+            return;
+        }
+
+        var resolvedSourcePath;
+        try {
+            resolvedSourcePath = resolvePath(sourceTemplate, {});
+        } catch (err) {
+            showFatalError(err.message);
+            return;
+        }
+
+        var columns = schema.fields || [];
+        var method = (schema.source.method || "GET").toUpperCase();
+
+        els.tableHead.innerHTML = "";
+        columns.forEach(function (field) {
+            var th = document.createElement("th");
+            th.textContent = field.label || field.key;
+            els.tableHead.appendChild(th);
+        });
+        var actionTh = document.createElement("th");
+        actionTh.textContent = "Aksi";
+        els.tableHead.appendChild(actionTh);
+
+        currentTableColumns = columns;
+        currentTableSourcePath = resolvedSourcePath;
+
+        els.refreshBtn.style.display = "inline-block";
+        els.tableWrap.style.display = "block";
+
+        if (pathTemplateOf(schema.createForm)) {
+            els.createDataBtn.style.display = "inline-block";
+            els.createDataBtn.onclick = function () { openCreateModal(schema.createForm); };
+        }
+
+        loadTableData(columns, resolvedSourcePath, method);
+    }
+
+    els.refreshBtn.addEventListener("click", function () {
+        if (currentTableColumns && currentTableSourcePath) {
+            loadTableData(currentTableColumns, currentTableSourcePath, "GET");
+        }
+    });
+
+    // --- Modal: Detail (baca-saja, SEMUA field row apa adanya) ---
+    function closeRowModal() {
+        els.rowModalOverlay.classList.remove("show");
+        els.rowModalBody.innerHTML = "";
+        els.rowModalBanner.className = "banner";
+        els.rowModalSaveBtn.style.display = "none";
+        els.rowModalSaveBtn.onclick = null;
+    }
+    function showRowModalError(message) {
+        els.rowModalBanner.className = "banner show error";
+        els.rowModalBanner.textContent = message;
+    }
+
+    function buildRowUrl(id) {
+        return currentTableSourcePath + "/" + encodeURIComponent(id);
+    }
+
+    function openDetailModal(id) {
+        els.rowModalTitle.textContent = "Detail Data #" + id;
+        els.rowModalBody.innerHTML = "<div class=\"skeleton\">Mengambil data…</div>";
+        els.rowModalSaveBtn.style.display = "none";
+        els.rowModalOverlay.classList.add("show");
+
+        // Baris yang sudah tersimpan utuh dari load tabel dipakai duluan (kontrak D:
+        // "response tiap baris disimpan utuh sebagai state baris") - tetap fallback
+        // fetch ulang by id kalau entah kenapa tidak ada (mis. tabel di-refresh manual
+        // di tab lain).
+        var cached = currentTableRows[id];
+        var pending = cached ? Promise.resolve(cached) : apiFetch(buildRowUrl(id)).then(extractData);
+
+        pending.then(function (record) {
+            var dl = document.createElement("dl");
+            dl.className = "detail-list";
+            Object.keys(record || {}).forEach(function (key) {
+                var dt = document.createElement("dt");
+                dt.textContent = key;
+                var dd = document.createElement("dd");
+                dd.textContent = formatCellValue(record[key]);
+                dl.appendChild(dt);
+                dl.appendChild(dd);
+            });
+            els.rowModalBody.innerHTML = "";
+            els.rowModalBody.appendChild(dl);
+        }).catch(function (err) {
+            els.rowModalBody.innerHTML = "";
+            showRowModalError("Gagal mengambil detail: " + err.message);
+        });
+    }
+
+    function guessInputType(value) {
+        if (typeof value === "number") return "number";
+        if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return "date";
+        return "text";
+    }
+
+    // --- Modal: Update (form edit per key, kecuali "id" - identitas baris) ---
+    function openUpdateModal(id) {
+        els.rowModalTitle.textContent = "Update Data #" + id;
+        els.rowModalBody.innerHTML = "<div class=\"skeleton\">Mengambil data…</div>";
+        els.rowModalSaveBtn.style.display = "none";
+        els.rowModalOverlay.classList.add("show");
+
+        var cached = currentTableRows[id];
+        var pending = cached ? Promise.resolve(cached) : apiFetch(buildRowUrl(id)).then(extractData);
+
+        pending.then(function (record) {
+            record = record || {};
+            var form = document.createElement("div");
+
+            Object.keys(record).forEach(function (key) {
+                if (key === "id") return;
+
+                var field = document.createElement("div");
+                field.className = "field";
+
+                var label = document.createElement("label");
+                label.htmlFor = "rowField_" + key;
+                label.textContent = key;
+                field.appendChild(label);
+
+                var value = record[key];
+                var input = document.createElement("input");
+                input.id = "rowField_" + key;
+                input.name = key;
+                input.type = guessInputType(value);
+                input.value = value === null || value === undefined ? "" : value;
+                field.appendChild(input);
+
+                form.appendChild(field);
+            });
+
+            els.rowModalBody.innerHTML = "";
+            els.rowModalBody.appendChild(form);
+            els.rowModalSaveBtn.textContent = "Simpan";
+            els.rowModalSaveBtn.style.display = "inline-block";
+            els.rowModalSaveBtn.onclick = function () {
+                submitRowUpdate(id, Object.keys(record).filter(function (k) { return k !== "id"; }));
+            };
+        }).catch(function (err) {
+            els.rowModalBody.innerHTML = "";
+            showRowModalError("Gagal mengambil data: " + err.message);
+        });
+    }
+
+    function submitRowUpdate(id, keys) {
+        var payload = {};
+        keys.forEach(function (key) {
+            var input = document.getElementById("rowField_" + key);
+            if (!input) return;
+            payload[key] = input.type === "number" && input.value !== "" ? Number(input.value) : input.value;
+        });
+
+        els.rowModalSaveBtn.disabled = true;
+        els.rowModalSaveBtn.textContent = "Menyimpan…";
+
+        apiFetch(buildRowUrl(id), {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        })
+            .then(function () {
+                closeRowModal();
+                showBanner("success", "Data #" + id + " berhasil diperbarui.");
+                if (currentTableColumns && currentTableSourcePath) {
+                    loadTableData(currentTableColumns, currentTableSourcePath, "GET");
+                }
+            })
+            .catch(function (err) {
+                showRowModalError("Gagal menyimpan: " + err.message);
+            })
+            .finally(function () {
+                els.rowModalSaveBtn.disabled = false;
+                els.rowModalSaveBtn.textContent = "Simpan";
+            });
+    }
+
+    // --- Modal: "+ Tambah Data" (createForm) - TANPA passthrough, murni data baru ---
+    function openCreateModal(createFormDef) {
+        var createState = {};
+        els.rowModalTitle.textContent = createFormDef.label || "Tambah Data";
+        els.rowModalBody.innerHTML = "";
+        els.rowModalBanner.className = "banner";
+
+        var form = document.createElement("div");
+        (createFormDef.fields || []).forEach(function (field) {
+            form.appendChild(buildField(field, createState));
+        });
+        els.rowModalBody.appendChild(form);
+
+        els.rowModalSaveBtn.textContent = createFormDef.label || "Simpan";
+        els.rowModalSaveBtn.style.display = "inline-block";
+        els.rowModalSaveBtn.onclick = function () {
+            submitCreate(createFormDef, createState);
+        };
+
+        els.rowModalOverlay.classList.add("show");
+    }
+
+    function submitCreate(createFormDef, createState) {
+        var resolvedPath;
+        try {
+            resolvedPath = resolvePath(pathTemplateOf(createFormDef), createState);
+        } catch (err) {
+            showRowModalError(err.message);
+            return;
+        }
+
+        els.rowModalSaveBtn.disabled = true;
+        els.rowModalSaveBtn.textContent = "Menyimpan…";
+
+        apiFetch(resolvedPath, {
+            method: (createFormDef.method || "POST").toUpperCase(),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(createState),
+        })
+            .then(function () {
+                closeRowModal();
+                showBanner("success", "Data baru berhasil ditambahkan.");
+                if (currentTableColumns && currentTableSourcePath) {
+                    loadTableData(currentTableColumns, currentTableSourcePath, "GET");
+                }
+            })
+            .catch(function (err) {
+                showRowModalError("Gagal menambah data: " + err.message);
+            })
+            .finally(function () {
+                els.rowModalSaveBtn.disabled = false;
+                els.rowModalSaveBtn.textContent = createFormDef.label || "Simpan";
+            });
+    }
+
+    els.rowModalCloseBtn.addEventListener("click", closeRowModal);
+    els.rowModalOverlay.addEventListener("click", function (e) {
+        if (e.target === els.rowModalOverlay) closeRowModal();
+    });
+
+    // =====================================================================
+    // Router utama + load schema dari Auto Layout
+    // =====================================================================
+    function renderForm(schema, formKey) {
+        var schemaType = schema && typeof schema.type === "string" ? schema.type.toUpperCase() : "";
+        if (schemaType === "DATATABLE") {
+            renderDataTable(schema, formKey);
+        } else {
+            renderFormType(schema, formKey);
+        }
+    }
+
+    function loadSchema() {
+        if (!formId) {
+            showFatalError("Query string ?formId=... wajib diisi - buka halaman ini dari Daftar Form (index.html).");
+            return;
+        }
+
+        var headers = {};
+        if (AUTO_LAYOUT_BEARER_TOKEN) headers["Authorization"] = "Bearer " + AUTO_LAYOUT_BEARER_TOKEN;
+
+        fetch(AUTO_LAYOUT_BASE + "/forms/" + encodeURIComponent(formId), { headers: headers })
+            .then(function (res) {
+                if (res.status === 401 || res.status === 403) {
+                    throw new Error("Akses ditolak (" + res.status + ") - token Bearer Auto Layout tidak valid/kedaluwarsa.");
+                }
+                if (!res.ok) throw new Error("Server Auto Layout membalas status " + res.status);
+                return res.json();
+            })
+            .then(function (data) {
+                if (!data.active) showBanner("error", "Form ini sedang tidak aktif.");
+
+                var schema;
+                try {
+                    schema = JSON.parse(data.formSchema);
+                } catch (parseErr) {
+                    throw new Error("formSchema bukan JSON valid: " + parseErr.message);
+                }
+
+                renderForm(schema, data.formKey);
+                els.meta.textContent = "Form ID " + data.id + " - versi " + data.version;
+            })
+            .catch(function (err) {
+                showFatalError(
+                    "Tidak bisa mengambil form schema dari " + AUTO_LAYOUT_BASE + ": " + err.message +
+                    ". Kalau ini error jaringan/CORS, pastikan server Auto Layout mengizinkan origin halaman ini."
+                );
+            });
+    }
+
+    loadSchema();
+})();
+</script>
 
 </body>
 </html>

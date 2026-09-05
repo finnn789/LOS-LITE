@@ -1,6 +1,9 @@
 // Konfigurasi bersama koneksi ke Auto Layout (form generator eksternal) - dipakai
-// dynamic-form.js (ambil satu form) dan forms-list.js (daftar semua form), disatukan
-// di sini supaya base URL & token cuma ditulis SEKALI, tidak dobel-tulis di dua file.
+// forms-list.js (daftar semua form) di index.html, disatukan di sini supaya base URL &
+// token cuma ditulis SEKALI. dynamic-form.html TIDAK memuat file ini - dia berdiri
+// sendiri dengan AUTO_LAYOUT_BASE/AUTO_LAYOUT_BEARER_TOKEN sendiri (lihat komentar
+// KONFIGURASI di dalamnya) - kalau nilainya berubah, update JUGA di sini supaya
+// keduanya tetap sinkron.
 //
 // PERINGATAN: token ini HARDCODED plain-text dan bakal ke-load browser sebagai file
 // statis biasa - siapapun yang buka DevTools/View Source halaman ini bisa membacanya.
