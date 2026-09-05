@@ -80,6 +80,20 @@ public class LoanApplicationController {
         return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil pengajuan milik applicant", responses));
     }
 
+    // Ringkasan by-nik + by-applicant jadi SATU panggilan - klien cukup modal NIK, tidak
+    // perlu resolve applicantId dulu lewat ApplicantController#getByNik baru query ke sini
+    // lagi. Cocok dipakai form/dashboard yang mulai dari NIK dan langsung mau lihat semua
+    // pengajuan (buat pilih salah satu id-nya, lanjut submit/dst).
+    @GetMapping("/by-nik/{nik}")
+    public ResponseEntity<ApiResponse<List<LoanApplicationResponse>>> getByApplicantNik(@PathVariable String nik) {
+        List<LoanApplicationResponse> responses = loanApplicationService.getByApplicantNik(nik)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil pengajuan milik applicant", responses));
+    }
+
     // Cuma field bisnis (jumlah/tenor/tujuan/penghasilan/utang) - lihat javadoc
     // UpdateLoanApplicationRequest kenapa applicantId & status TIDAK ada di sini.
     @PutMapping("/{id}")

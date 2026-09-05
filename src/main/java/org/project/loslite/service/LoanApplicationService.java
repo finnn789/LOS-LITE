@@ -29,6 +29,7 @@ public class LoanApplicationService {
 
     private final LoanApplicationPersist loanApplicationPersist;
     private final ApplicantPersist applicantPersist;
+    private final ApplicantService applicantService;
     private final LoanApplicationStatusService loanApplicationStatusService;
 
     @Transactional
@@ -88,6 +89,16 @@ public class LoanApplicationService {
         }
 
         return loanApplicationPersist.findByApplicantId(applicantId);
+    }
+
+    // Ringkasan 1-panggilan dari getByApplicantId - resolve applicant lewat NIK dulu
+    // (delegasi ke ApplicantService#getByNik, biar hash-NIK-nya tidak duplikat di sini),
+    // baru ambil histori pengajuannya. Klien cukup modal NIK, tidak perlu 2 kali round-trip
+    // (by-nik lalu by-applicant) buat dapat semua LoanApplication milik satu orang.
+    @Transactional(readOnly = true)
+    public List<LoanApplication> getByApplicantNik(String nik) {
+        Applicant applicant = applicantService.getByNik(nik);
+        return loanApplicationPersist.findByApplicantId(applicant.getId());
     }
 
     @Transactional
